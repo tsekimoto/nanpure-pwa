@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="難易度別・デイリー問題つきのシンプルなナンプレアプリです。">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ナンプレ">
+  <title>毎日ナンプレ</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+  <div id="app">
+    <div id="mc" role="main" aria-live="polite"></div>
+
+    <!-- Bottom Tab Bar -->
+    <nav id="btabs" aria-label="メインナビゲーション">
+      <button class="tbb on" id="tab-h" aria-label="問題一覧">
+        <i class="ti ti-layout-list" aria-hidden="true"></i>
+        <span>問題一覧</span>
+      </button>
+      <button class="tbb" id="tab-d" aria-label="デイリー">
+        <i class="ti ti-calendar" aria-hidden="true"></i>
+        <span>デイリー</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="./js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,403 @@
+/* ============================================================
+   毎日ナンプレ — style.css
+   ============================================================ */
+
+/* ── CSS Variables ─────────────────────────────────────────── */
+:root {
+  --bg:      #ffffff;
+  --bg2:     #f2f2f7;
+  --bg3:     #e5e5ea;
+  --text:    #1c1c1e;
+  --text2:   #6e6e73;
+  --text3:   #aeaeb2;
+  --border:  #c7c7cc;
+  --border2: #e5e5ea;
+  --accent:  #2563eb;
+  --acc-bg:  rgba(37,99,235,0.12);
+  --acc-bg2: rgba(37,99,235,0.07);
+  --error:   #dc2626;
+  --warn:    #f59e0b;
+  --ok:      #16a34a;
+  --menu-w:  220px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:      #1c1c1e;
+    --bg2:     #2c2c2e;
+    --bg3:     #3a3a3c;
+    --text:    #f5f5f7;
+    --text2:   #aeaeb2;
+    --text3:   #636366;
+    --border:  #3a3a3c;
+    --border2: #2c2c2e;
+    --accent:  #4c8ef7;
+    --acc-bg:  rgba(76,142,247,0.15);
+    --acc-bg2: rgba(76,142,247,0.08);
+    --error:   #f87171;
+    --warn:    #fbbf24;
+    --ok:      #4ade80;
+  }
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button { font-family: inherit; }
+
+/* ── Base ──────────────────────────────────────────────────── */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* ── App Layout ─────────────────────────────────────────────── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;        /* dynamic viewport height (mobile safe) */
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+#mc {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+#mc.no-scroll { overflow-y: hidden; }
+
+/* ── Bottom Tab Bar ─────────────────────────────────────────── */
+#btabs {
+  flex-shrink: 0;
+  display: flex;
+  border-top: 0.5px solid var(--border);
+  background: var(--bg);
+  padding-bottom: env(safe-area-inset-bottom); /* iPhone notch */
+}
+
+.tbb {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 0 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--text3);
+  touch-action: manipulation;
+  transition: color 0.15s;
+}
+
+.tbb .ti { font-size: 22px; }
+.tbb.on  { color: var(--accent); }
+
+/* ── Shared Buttons ─────────────────────────────────────────── */
+.sdkd {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  border: 0.5px solid var(--border);
+  cursor: pointer;
+  background: transparent;
+  color: var(--text2);
+  touch-action: manipulation;
+  transition: all 0.12s;
+}
+.sdkd.on {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 500;
+  border-color: var(--text);
+}
+
+/* ── Problem List Item ──────────────────────────────────────── */
+.pitm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 12px;
+  margin-bottom: 8px;
+  background: var(--bg2);
+  border-radius: 12px;
+  border: 0.5px solid var(--border2);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 0.1s;
+}
+.pitm:active { opacity: 0.7; }
+
+/* ── Sudoku Board ───────────────────────────────────────────── */
+.sdk-board {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  border: 2.5px solid var(--text);
+  border-radius: 5px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.sdk-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-right: 0.5px solid var(--border2);
+  border-bottom: 0.5px solid var(--border2);
+  box-sizing: border-box;
+  transition: background 0.07s;
+  position: relative;
+  font-size: clamp(11px, 4vw, 18px);
+}
+
+/* Box separator lines */
+.sdk-cell.rb { border-right: 2.5px solid var(--text); }
+.sdk-cell.bb { border-bottom: 2.5px solid var(--text); }
+
+/* Cell states */
+.sdk-cell.sel  { background: var(--acc-bg)  !important; }
+.sdk-cell.rel  { background: var(--bg2); }
+.sdk-cell.same { background: var(--acc-bg2); }
+
+/* Number colors */
+.sdk-cell.given { font-weight: 700; color: var(--text); }
+.sdk-cell.user  { color: var(--accent); font-weight: 500; }
+.sdk-cell.err   { color: var(--error) !important; }
+
+/* Memo grid inside a cell */
+.sdkmn {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 1px;
+  box-sizing: border-box;
+}
+.sdkmn span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(4px, 1.4vw, 7px);
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ── Game Controls ──────────────────────────────────────────── */
+.sdk-ctrl {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text2);
+  touch-action: manipulation;
+  transition: all 0.1s;
+}
+.sdk-ctrl.on {
+  background: var(--acc-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Number Pad ─────────────────────────────────────────────── */
+.sdk-npad {
+  aspect-ratio: 1;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 8px;
+  font-size: clamp(14px, 4.5vw, 20px);
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  touch-action: manipulation;
+  transition: transform 0.08s;
+}
+.sdk-npad:active { transform: scale(0.87); }
+
+/* ── Hamburger Menu ─────────────────────────────────────────── */
+#hmenu {
+  display: none;
+  position: absolute;
+  top: 45px;
+  left: 0;
+  width: var(--menu-w);
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: 0 0 14px 0;
+  z-index: 30;
+}
+
+.hmenu-section {
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--border2);
+}
+.hmenu-section:last-child { border-bottom: none; }
+
+.hmenu-label {
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+
+.btn-hint {
+  width: 100%;
+  padding: 9px;
+  background: rgba(245,158,11,0.12);
+  border: 0.5px solid rgba(245,158,11,0.4);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #92400e;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+}
+@media (prefers-color-scheme: dark) {
+  .btn-hint { color: #fcd34d; }
+}
+
+.btn-reset {
+  width: 100%;
+  padding: 9px;
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.setting-row:last-child { margin-bottom: 0; }
+.setting-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+
+/* ── Overlay / Modal ────────────────────────────────────────── */
+.overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.46);
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+.modal-card {
+  background: var(--bg);
+  border-radius: 16px;
+  padding: 28px 22px;
+  text-align: center;
+  width: min(280px, 88%);
+  border: 0.5px solid var(--border);
+}
+
+/* ── Ad Banner ──────────────────────────────────────────────── */
+.ad-banner {
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 8px;
+}
+
+/* ── Calendar ───────────────────────────────────────────────── */
+.cal-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 4px;
+}
+.cal-table th {
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--text2);
+  text-align: center;
+  font-weight: 400;
+}
+.cal-day {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 13px;
+  margin: 2px auto;
+  cursor: pointer;
+  color: var(--text2);
+}
+.cal-day.today  { border: 1.5px solid var(--accent); font-weight: 500; color: var(--accent); }
+.cal-day.sel    { background: var(--text); color: var(--bg); font-weight: 500; }
+.cal-day.future { color: var(--border); cursor: default; }
+
+/* ── Screen Padding ─────────────────────────────────────────── */
+.screen { padding: 16px; }
+
+/* ── Accessibility ──────────────────────────────────────────── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); border: 0;
+}
+
+
+/* ── Local icon fallback (external icon CDN removed for offline PWA) ── */
+.ti {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  line-height: 1;
+}
+.ti-layout-list::before { content: "▦"; }
+.ti-calendar::before    { content: "□"; }
+.ti-chevron-right::before { content: "›"; }
+.ti-menu-2::before      { content: "☰"; }
+.ti-bulb::before        { content: "💡"; font-size: 0.9em; }
+.ti-refresh::before     { content: "↻"; }
+.ti-eraser::before      { content: "⌫"; }
+.ti-pencil::before      { content: "✎"; }
+.ti-backspace::before   { content: "⌫"; }
