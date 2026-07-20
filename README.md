@@ -4,13 +4,13 @@
 
 ## 公開方法
 
-このフォルダの中身を、そのまま静的ホスティングにアップロードしてください。
+ブラウザから利用できるように、GitHub Pages 向けの自動デプロイ設定を同梱しています。
 
-推奨候補:
+1. GitHub のリポジトリ設定で **Settings > Pages > Source** を **GitHub Actions** にします。
+2. `main` または `master` ブランチへ push すると、`.github/workflows/deploy-pages.yml` が静的ファイル一式を GitHub Pages に公開します。
+3. Actions の `Deploy PWA to GitHub Pages` 実行結果に表示される URL をブラウザで開いて利用してください。
 
-- GitHub Pages
-- Cloudflare Pages
-- Netlify
+手動で公開する場合は、このフォルダの中身をそのまま Cloudflare Pages / Netlify などの静的ホスティングにアップロードしてください。
 
 PWAとしてインストール可能にするには、原則として HTTPS 配信が必要です。localhost はテスト用途として例外的に利用できます。
 
@@ -80,5 +80,4 @@ nanpure-pwa/
 | `np:lpg:{diff}:{i}` | 問題一覧の進捗 |
 | `np:dp:{date}:{diff}` | デイリー問題データ |
 | `np:dpg:{date}:{diff}` | デイリー進捗 |
-| `np:settings` | 設定 |
 | `np:solveCount` | クリア回数 |

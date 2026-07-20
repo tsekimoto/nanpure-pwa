@@ -222,12 +222,13 @@ const DLBL = { easy: '初級', medium: '中級', hard: '上級' };
    4. アプリ状態
    ============================================================ */
 
-let SCREEN    = 'home';   // 'home' | 'daily' | 'game'
+let SCREEN    = 'home';   // 'home' | 'list' | 'daily' | 'game'
 
 // ── 問題一覧タブ ──
 let HOME_DIFF  = 'easy';
 /** @type {{ puzzle:number[], solution:number[], pg:any|null }[]|null} */
 let HOME_PROBS = { easy: null, medium: null, hard: null };
+let HOME_LOADING = { easy: false, medium: false, hard: false };
 
 // ── デイリータブ ──
 let CAL_YEAR  = new Date().getFullYear();
@@ -254,7 +255,6 @@ let DAILY_DIFF = 'medium';
 let GZ = {};
 
 let MENU_OPEN  = false;
-let SETTINGS   = Storage.get('settings') || { showErrors: true, autoClear: true };
 let SOLVE_COUNT = Storage.get('solveCount') || 0;
 
 /* ============================================================
@@ -269,6 +269,36 @@ function todayStr(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+function formatTime(ms) {
+  const total = Math.max(0, Math.floor((ms || 0) / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+function progressLabel(pg) {
+  if (!pg) return { icon: '⚪', label: '未プレイ', cls: 'status-new' };
+  if (pg.done) {
+    const time = pg.elapsedMs ? `（${formatTime(pg.elapsedMs)}）` : '';
+    return { icon: '✅', label: `クリア済み${time}`, cls: 'status-done' };
+  }
+  return { icon: '🔵', label: '進行中', cls: 'status-progress' };
+}
+
+function dailyProgress(date, diff) {
+  return Storage.get(`dpg:${date}:${diff}`);
+}
+
+function isDailyDone(date, diff) {
+  return !!dailyProgress(date, diff)?.done;
+}
+
+function isDailyAnyDone(date) {
+  return ['easy', 'medium', 'hard'].some(d => isDailyDone(date, d));
+}
+
 /* ============================================================
    6. ナビゲーション
    ============================================================ */
@@ -277,15 +307,18 @@ function nav(screen) {
   SCREEN    = screen;
   MENU_OPEN = false;
 
+  const app = document.getElementById('app');
   const mc  = document.getElementById('mc');
   const tabH = document.getElementById('tab-h');
   const tabD = document.getElementById('tab-d');
 
+  app.classList.toggle('game-mode', screen === 'game');
   mc.classList.toggle('no-scroll', screen === 'game');
-  tabH.classList.toggle('on', screen === 'home');
+  tabH.classList.toggle('on', screen === 'home' || screen === 'list');
   tabD.classList.toggle('on', screen === 'daily');
 
   if (screen === 'home')  renderHome();
+  else if (screen === 'list') renderProblemList();
   else if (screen === 'daily') renderDaily();
   // 'game' は enterGame() から直接 renderGame() を呼ぶ
 }
@@ -295,12 +328,22 @@ function nav(screen) {
    ============================================================ */
 
 /** 難易度の問題をすべてロード（なければ生成して保存） */
-async function loadProblems(diff) {
+function loadProblems(diff) {
+  if (HOME_LOADING[diff]) return;
+
+  HOME_LOADING[diff] = true;
   HOME_PROBS[diff] = [];
-  if (SCREEN === 'home' && HOME_DIFF === diff) renderHome(); // ローディング表示
+  if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
 
   const arr = [];
-  for (let i = 0; i < PROBLEM_COUNT; i++) {
+  const loadNext = i => {
+    if (i >= PROBLEM_COUNT) {
+      HOME_PROBS[diff] = arr;
+      HOME_LOADING[diff] = false;
+      if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
+      return;
+    }
+
     let pd = Storage.get(`lp:${diff}:${i}`);
     if (!pd) {
       pd = generatePuzzle(diff);
@@ -308,56 +351,110 @@ async function loadProblems(diff) {
     }
     const pg = Storage.get(`lpg:${diff}:${i}`);
     arr.push({ ...pd, pg });
+    HOME_PROBS[diff] = [...arr];
 
-    // 最初の問題が生成できたら即表示
-    if (i === 0) {
-      HOME_PROBS[diff] = [...arr];
-      if (SCREEN === 'home' && HOME_DIFF === diff) renderHome();
-    }
-  }
-  HOME_PROBS[diff] = arr;
-  if (SCREEN === 'home' && HOME_DIFF === diff) renderHome();
+    if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
+    setTimeout(() => loadNext(i + 1), 0);
+  };
+
+  setTimeout(() => loadNext(0), 0);
 }
 
 function renderHome() {
-  const mc    = document.getElementById('mc');
-  const probs = HOME_PROBS[HOME_DIFF];
+  const mc = document.getElementById('mc');
+  const today = todayStr();
+  const dailyDone = ['easy', 'medium', 'hard'].filter(d => isDailyDone(today, d));
+  const diffItems = ['easy', 'medium', 'hard'].map(d => `
+    <button class="home-list-item" data-a="openList" data-v="${d}">
+      <span>
+        <strong>${DLBL[d]}</strong>
+        <small>${PROBLEM_COUNT}問の一覧を見る</small>
+      </span>
+      <span class="home-list-arrow">›</span>
+    </button>
+  `).join('');
 
-  const diffTabs = ['easy', 'medium', 'hard'].map(d =>
-    `<button class="sdkd${d === HOME_DIFF ? ' on' : ''}" data-a="setHD" data-v="${d}">${DLBL[d]}</button>`
-  ).join('');
+  mc.innerHTML = `
+    <div class="screen home-screen">
+      <div class="hero-card">
+        <p class="eyebrow">毎日ナンプレ</p>
+        <h1>今日も1問、気軽に脳トレ。</h1>
+        <p>ホームからデイリー問題や難易度別の問題一覧を選べます。</p>
+      </div>
+
+      <section class="home-section">
+        <div class="section-head">
+          <h2>デイリー問題</h2>
+          ${dailyDone.length ? `<span class="done-badge">${dailyDone.map(d => DLBL[d]).join('・')} クリア済み</span>` : ''}
+        </div>
+        <button class="daily-card" data-a="goDaily">
+          <span>
+            <strong>${today} の問題</strong>
+            <small>${dailyDone.length ? '別の難易度にも挑戦できます' : '日付と難易度を選んで挑戦'}</small>
+          </span>
+          <span class="home-list-arrow">›</span>
+        </button>
+      </section>
+
+      <section class="home-section">
+        <div class="section-head"><h2>難易度別の問題一覧</h2></div>
+        <div class="home-list">${diffItems}</div>
+      </section>
+    </div>`;
+}
+
+function problemListItems(probs, diff) {
+  return probs.map((p, i) => {
+    const status = progressLabel(p.pg);
+    return `
+      <div class="pitm ${status.cls}" data-a="playL" data-diff="${diff}" data-i="${i}">
+        <div>
+          <div class="problem-title">問題 ${i + 1}</div>
+          <div class="problem-status">${status.label}</div>
+        </div>
+        <div class="problem-meta">
+          <span class="problem-icon">${status.icon}</span>
+          <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderProblemList() {
+  const mc    = document.getElementById('mc');
+  const diff  = HOME_DIFF;
+  const probs = HOME_PROBS[diff];
+  const loading = HOME_LOADING[diff];
 
   let body = '';
   if (probs === null) {
-    // 未ロード → ロード開始
-    body = '<p style="padding:40px 0;text-align:center;color:var(--text3);font-size:14px">読み込み中...</p>';
-    loadProblems(HOME_DIFF);
+    // 未ロード → まず読み込み画面を描画し、次フレームで生成を開始する
+    body = `
+      <div class="loading-panel">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>問題を読み込んでいます...</p>
+      </div>`;
+    requestAnimationFrame(() => loadProblems(diff));
   } else if (probs.length === 0) {
-    body = '<p style="padding:40px 0;text-align:center;color:var(--text3);font-size:14px">生成中...</p>';
+    body = `
+      <div class="loading-panel">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>${DLBL[diff]}の問題を生成中...</p>
+      </div>`;
   } else {
-    body = probs.map((p, i) => {
-      const isDone = p.pg?.done;
-      const isIn   = p.pg && !p.pg.done;
-      const icon   = isDone ? '✅' : isIn ? '🔵' : '⚪';
-      const label  = isDone ? 'クリア済み' : isIn ? '進行中' : '未プレイ';
-      return `
-        <div class="pitm" data-a="playL" data-diff="${HOME_DIFF}" data-i="${i}">
-          <div>
-            <div style="font-size:14px;font-weight:500;color:var(--text)">問題 ${i + 1}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${label}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:16px">${icon}</span>
-            <i class="ti ti-chevron-right" style="font-size:14px;color:var(--text3)" aria-hidden="true"></i>
-          </div>
-        </div>`;
-    }).join('');
+    const progress = loading ? `
+      <div class="loading-inline">
+        <div class="loading-spinner small" aria-hidden="true"></div>
+        <span>${probs.length} / ${PROBLEM_COUNT} 問を読み込みました。残りを生成中...</span>
+      </div>` : '';
+    body = progress + problemListItems(probs, diff);
   }
 
   mc.innerHTML = `
     <div class="screen">
-      <h1 style="font-size:18px;font-weight:500;color:var(--text);margin-bottom:12px">問題一覧</h1>
-      <div style="display:flex;gap:8px;margin-bottom:14px">${diffTabs}</div>
+      <button class="back-line" data-a="goHome">‹ 難易度リストへ戻る</button>
+      <h1 class="screen-title">${DLBL[diff]}の問題一覧</h1>
+      <p class="screen-lead">問題を選択してナンプレを開始してください。</p>
       ${body}
     </div>`;
 }
@@ -396,9 +493,10 @@ function renderDaily() {
       if (isSel)       cls += ' sel';
       else if (isTd)   cls += ' today';
       else if (isFut)  cls += ' future';
+      if (isDailyAnyDone(ds)) cls += ' done';
 
       const att = (!isFut) ? `data-a="selDt" data-date="${ds}"` : '';
-      row += `<td style="text-align:center"><div class="${cls}" ${att}>${day}</div></td>`;
+      row += `<td style="text-align:center"><div class="${cls}" ${att}>${day}${isDailyAnyDone(ds) ? '<span class="cal-dot">✓</span>' : ''}</div></td>`;
       day++;
     }
     rows += row + '</tr>';
@@ -408,15 +506,18 @@ function renderDaily() {
     `<button class="sdkd${d === DAILY_DIFF ? ' on' : ''}" data-a="setDD" data-v="${d}">${DLBL[d]}</button>`
   ).join('');
 
+  const selectedPg = SEL_DATE ? dailyProgress(SEL_DATE, DAILY_DIFF) : null;
+  const selectedStatus = progressLabel(selectedPg);
   const selectedBlock = (SEL_DATE && SEL_DATE <= today) ? `
-    <div style="border-top:0.5px solid var(--border2);padding-top:14px;margin-top:14px">
-      <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:10px">
-        ${SEL_DATE}${SEL_DATE === today ? ' （今日）' : ''}
+    <div class="daily-selected">
+      <div class="daily-selected-head">
+        <span>${SEL_DATE}${SEL_DATE === today ? ' （今日）' : ''}</span>
+        ${selectedPg?.done ? `<span class="done-badge">クリア済み ${selectedPg.elapsedMs ? formatTime(selectedPg.elapsedMs) : ''}</span>` : ''}
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">${diffTabs}</div>
-      <button data-a="playD"
-        style="width:100%;padding:12px;background:var(--text);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">
-        この問題を解く
+      <div class="problem-status daily-status">${selectedStatus.icon} ${selectedStatus.label}</div>
+      <button class="primary-action" data-a="playD">
+        ${selectedPg?.done ? 'もう一度見る' : 'この問題を解く'}
       </button>
     </div>` :
     '<p style="margin-top:14px;font-size:13px;color:var(--text3)">日付を選択してください</p>';
@@ -451,7 +552,7 @@ function renderDaily() {
 
 function playList(diff, i) {
   const pd = (HOME_PROBS[diff]?.[i]) || Storage.get(`lp:${diff}:${i}`) || generatePuzzle(diff);
-  enterGame(pd, `lpg:${diff}:${i}`, `${DLBL[diff]} — 問題 ${i + 1}`, 'home');
+  enterGame(pd, `lpg:${diff}:${i}`, `${DLBL[diff]} — 問題 ${i + 1}`, 'list');
 }
 
 function playDaily(date, diff) {
@@ -475,14 +576,21 @@ function enterGame(pd, pgKey, title, backTo) {
     hints:    pg ? (pg.hints ?? HINT_MAX) : HINT_MAX,
     wrong:    new Set(pg ? (pg.wrong || []) : []),
     done:     pg ? (pg.done || false) : false,
+    startedAt: pg?.startedAt || Date.now(),
+    elapsedMs: pg?.elapsedMs || 0,
+    completedAt: pg?.completedAt || null,
+    showErrors: false,
+    lastCheck: null,
     pgKey, title, backTo,
   };
   SCREEN    = 'game';
   MENU_OPEN = false;
 
+  const app  = document.getElementById('app');
   const mc   = document.getElementById('mc');
   const tabH = document.getElementById('tab-h');
   const tabD = document.getElementById('tab-d');
+  app.classList.add('game-mode');
   mc.classList.add('no-scroll');
   tabH.classList.remove('on');
   tabD.classList.remove('on');
@@ -497,12 +605,15 @@ function saveGame() {
     hints: GZ.hints,
     wrong: [...GZ.wrong],
     done:  GZ.done,
+    startedAt: GZ.startedAt,
+    elapsedMs: GZ.elapsedMs || (GZ.done ? Date.now() - GZ.startedAt : 0),
+    completedAt: GZ.completedAt,
   });
 }
 
 function backFromGame() {
   // 問題一覧の進捗を更新
-  if (GZ.backTo === 'home' && GZ.pgKey?.startsWith('lpg:')) {
+  if (GZ.backTo === 'list' && GZ.pgKey?.startsWith('lpg:')) {
     const [, diff, idx] = GZ.pgKey.split(':');
     if (HOME_PROBS[diff]?.[+idx]) {
       HOME_PROBS[diff][+idx].pg = Storage.get(GZ.pgKey);
@@ -543,46 +654,31 @@ function renderGame() {
     <!-- ☰ ハンバーガーメニュー (position:absolute) -->
     <div id="hmenu">
       <div class="hmenu-section">
-        <div class="hmenu-label">ヒント残り <strong id="hl">${GZ.hints}</strong> 回</div>
+        <div class="hmenu-label">メニュー</div>
         <button class="btn-hint" data-a="gHint">
-          <i class="ti ti-bulb" aria-hidden="true"></i> ヒントを使う
+          <i class="ti ti-bulb" aria-hidden="true"></i> ヒントを使う（残り <strong id="hl">${GZ.hints}</strong> 回）
+        </button>
+        <button class="btn-menu" data-a="gCheck">
+          <i class="ti ti-check" aria-hidden="true"></i> エラーチェック
+        </button>
+        <button class="btn-menu" data-a="showHow">
+          <i class="ti ti-help" aria-hidden="true"></i> 遊び方
         </button>
         <button class="btn-reset" data-a="gReset">
           <i class="ti ti-refresh" aria-hidden="true"></i> リセット
         </button>
       </div>
-      <div class="hmenu-section">
-        <div class="hmenu-label">設定</div>
-        <label class="setting-row">
-          <span>エラーを表示</span>
-          <input type="checkbox" data-a="x" data-key="showErrors" ${SETTINGS.showErrors ? 'checked' : ''}>
-        </label>
-        <label class="setting-row">
-          <span>メモを自動消去</span>
-          <input type="checkbox" data-a="x" data-key="autoClear" ${SETTINGS.autoClear ? 'checked' : ''}>
-        </label>
-      </div>
-      <div class="hmenu-section">
-        <div class="hmenu-label">広告スペース</div>
-        <div class="ad-banner" style="margin-top:0">
-          <span style="font-size:10px">広告</span>
-          <span>広告</span>
-          <span style="font-size:10px">✕</span>
-        </div>
-      </div>
     </div>
 
     <!-- ゲームエリア -->
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;
-         padding:8px 12px 4px;overflow:hidden">
+    <div class="game-area">
 
       <!-- 盤面 -->
-      <div class="sdk-board" id="brd" style="width:100%;max-width:320px;flex-shrink:0"></div>
+      <div class="sdk-board game-board" id="brd"></div>
 
       <!-- ステータス行 -->
-      <div style="width:100%;max-width:320px;display:flex;justify-content:space-between;
-           align-items:center;padding:5px 0;flex-shrink:0">
-        <div id="serr" style="font-size:12px;color:var(--text3)">エラーなし</div>
+      <div class="game-status-row">
+        <div id="serr" style="font-size:12px;color:var(--text3)">未チェック</div>
         <div style="display:flex;align-items:center;gap:2px">
           <span id="h0" style="font-size:14px">●</span>
           <span id="h1" style="font-size:14px">●</span>
@@ -591,7 +687,7 @@ function renderGame() {
       </div>
 
       <!-- コントロール行 -->
-      <div style="width:100%;max-width:320px;display:flex;gap:6px;margin-bottom:6px;flex-shrink:0">
+      <div class="game-controls">
         <button class="sdk-ctrl" data-a="gErase">
           <i class="ti ti-eraser" style="font-size:15px" aria-hidden="true"></i>
           <span>消す</span>
@@ -604,8 +700,7 @@ function renderGame() {
       </div>
 
       <!-- 数字パッド -->
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;
-           width:100%;max-width:320px;flex-shrink:0" id="pad"></div>
+      <div class="number-pad" id="pad"></div>
     </div>
 
     <!-- クリアオーバーレイ -->
@@ -613,7 +708,8 @@ function renderGame() {
       <div class="modal-card">
         <div style="font-size:44px;margin-bottom:8px">🎉</div>
         <div style="font-size:20px;font-weight:500;color:var(--text);margin-bottom:6px">クリア！</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:20px">${GZ.title}</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${GZ.title}</div>
+        <div class="clear-time">クリア時間：<strong id="clearTime">${formatTime(GZ.elapsedMs)}</strong></div>
         <div style="display:flex;gap:8px">
           <button data-a="closeOv"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
@@ -626,6 +722,45 @@ function renderGame() {
             一覧へ戻る
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ヒント前広告オーバーレイ -->
+    <div class="overlay" id="hintov" style="align-items:center;justify-content:center">
+      <div class="modal-card hint-card">
+        <div style="font-size:20px;font-weight:600;margin-bottom:8px">ヒントを使う</div>
+        <p class="hint-copy">広告を確認してから、選択中のマスにヒントを入力します。</p>
+        <div class="ad-banner popup-ad" aria-label="広告">
+          <span style="font-size:10px">広告</span>
+          <span>広告スペース</span>
+          <span style="font-size:10px">PR</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button data-a="closeHint"
+            style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
+                   border-radius:8px;font-size:13px;cursor:pointer;color:var(--text2);font-family:inherit">
+            キャンセル
+          </button>
+          <button data-a="useHint"
+            style="flex:1;padding:10px 0;background:var(--text);border:none;border-radius:8px;
+                   font-size:13px;cursor:pointer;color:var(--bg);font-weight:500;font-family:inherit">
+            ヒント実行
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 遊び方オーバーレイ -->
+    <div class="overlay" id="howto" style="align-items:center;justify-content:center">
+      <div class="modal-card howto-card">
+        <div style="font-size:20px;font-weight:600;margin-bottom:10px">遊び方</div>
+        <ul class="howto-list">
+          <li>空いているマスを選び、下の数字で入力します。</li>
+          <li>メモを押すと候補数字を小さく記録できます。</li>
+          <li>ヒントとエラーチェックは左上の☰メニューから実行します。</li>
+          <li>すべて正しい数字で埋めるとクリア時間が保存されます。</li>
+        </ul>
+        <button class="primary-action" data-a="closeHow">閉じる</button>
       </div>
     </div>
 
@@ -687,7 +822,7 @@ function updateCell(i) {
 
   const isGiven = GZ.puzzle[i] !== 0;
   const isSel   = i === GZ.sel;
-  const isErr   = SETTINGS.showErrors && GZ.wrong.has(i);
+  const isErr   = GZ.showErrors && GZ.wrong.has(i);
 
   let isRel = false, isSame = false;
   if (GZ.sel !== null && !isSel) {
@@ -731,11 +866,12 @@ function updateStatus() {
   const es = document.getElementById('serr');
   if (!es) return;
   if (GZ.done) {
-    es.textContent = '✅ クリア済み'; es.style.color = 'var(--ok)';
-  } else if (GZ.wrong.size > 0) {
-    es.textContent = `ミス: ${GZ.wrong.size}箇所`; es.style.color = 'var(--error)';
+    es.textContent = `✅ クリア済み ${formatTime(GZ.elapsedMs)}`; es.style.color = 'var(--ok)';
+  } else if (GZ.lastCheck) {
+    es.textContent = GZ.lastCheck;
+    es.style.color = GZ.wrong.size > 0 ? 'var(--error)' : 'var(--ok)';
   } else {
-    es.textContent = 'エラーなし'; es.style.color = 'var(--text3)';
+    es.textContent = 'エラー未チェック'; es.style.color = 'var(--text3)';
   }
 }
 
@@ -756,6 +892,37 @@ function closeMenu() {
 /* ============================================================
    12. ゲーム操作
    ============================================================ */
+
+
+function finalizeClear() {
+  GZ.done = true;
+  if (!GZ.elapsedMs) GZ.elapsedMs = Date.now() - GZ.startedAt;
+  if (!GZ.completedAt) GZ.completedAt = new Date().toISOString();
+  GZ.showErrors = false;
+  GZ.lastCheck = null;
+  saveGame();
+  updateAllCells();
+  updateStatus();
+  const ct = document.getElementById('clearTime');
+  if (ct) ct.textContent = formatTime(GZ.elapsedMs);
+  SOLVE_COUNT++;
+  Storage.set('solveCount', SOLVE_COUNT);
+  // ★ 広告: AD_EVERY 回に1回インタースティシャル
+  if (SOLVE_COUNT % AD_EVERY === 0) {
+    console.log('[広告] インタースティシャル広告を表示するタイミング');
+    // PWA版では AdSense 等のWeb広告を使用する。初期リリースでは未実装。
+  }
+  showOverlay('cov');
+}
+
+function gCheckErrors() {
+  if (!GZ.puzzle || GZ.done) return;
+  GZ.showErrors = true;
+  GZ.lastCheck = GZ.wrong.size > 0 ? `ミス: ${GZ.wrong.size}箇所` : '現在の入力にエラーはありません';
+  closeMenu();
+  updateAllCells();
+  updateStatus();
+}
 
 function gClick(i) {
   if (GZ.done) return;
@@ -789,23 +956,14 @@ function gEnter(n) {
     GZ.wrong.delete(GZ.sel);
   }
 
-  if (SETTINGS.autoClear) GZ.notes[GZ.sel] = [];
+  GZ.notes[GZ.sel] = [];
+  GZ.showErrors = false;
+  GZ.lastCheck = null;
 
   // クリア判定
   const isDone = GZ.wrong.size === 0 && GZ.cells.every((v, i) => v === GZ.solution[i]);
   if (isDone) {
-    GZ.done = true;
-    saveGame();
-    updateAllCells();
-    updateStatus();
-    SOLVE_COUNT++;
-    Storage.set('solveCount', SOLVE_COUNT);
-    // ★ 広告: AD_EVERY 回に1回インタースティシャル
-    if (SOLVE_COUNT % AD_EVERY === 0) {
-      console.log('[広告] インタースティシャル広告を表示するタイミング');
-      // PWA版では AdSense 等のWeb広告を使用する。初期リリースでは未実装。
-    }
-    showOverlay('cov');
+    finalizeClear();
     return;
   }
 
@@ -820,6 +978,8 @@ function gErase() {
   GZ.cells[GZ.sel] = 0;
   GZ.wrong.delete(GZ.sel);
   GZ.notes[GZ.sel] = [];
+  GZ.showErrors = false;
+  GZ.lastCheck = null;
   updateCell(GZ.sel);
   updateStatus();
   saveGame();
@@ -834,21 +994,25 @@ function gNote() {
 }
 
 function gHint() {
+  closeMenu();
+  showOverlay('hintov');
+}
+
+function useHint() {
+  hideOverlay('hintov');
   if (GZ.hints <= 0 || GZ.sel === null || GZ.done) return;
   if (GZ.puzzle[GZ.sel] !== 0) return;
   GZ.cells[GZ.sel] = GZ.solution[GZ.sel];
   GZ.wrong.delete(GZ.sel);
   GZ.notes[GZ.sel] = [];
   GZ.hints--;
+  GZ.showErrors = false;
+  GZ.lastCheck = null;
   closeMenu();
 
   const isDone = GZ.wrong.size === 0 && GZ.cells.every((v, i) => v === GZ.solution[i]);
   if (isDone) {
-    GZ.done = true;
-    saveGame();
-    updateAllCells();
-    updateStatus();
-    showOverlay('cov');
+    finalizeClear();
     return;
   }
   updateAllCells();
@@ -864,6 +1028,11 @@ function gReset() {
   GZ.hints    = HINT_MAX;
   GZ.sel      = null;
   GZ.noteMode = false;
+  GZ.elapsedMs = 0;
+  GZ.completedAt = null;
+  GZ.startedAt = Date.now();
+  GZ.showErrors = false;
+  GZ.lastCheck = null;
   closeMenu();
   const btn = document.getElementById('nbtn');
   const lbl = document.getElementById('nlbl');
@@ -880,8 +1049,11 @@ function gReset() {
 
 function dispatch(action, data) {
   const ACTIONS = {
-    // 問題一覧
-    setHD:  () => { HOME_DIFF = data.v; renderHome(); },
+    // ホーム・問題一覧
+    goHome: () => nav('home'),
+    goDaily:() => nav('daily'),
+    openList: () => { HOME_DIFF = data.v; nav('list'); },
+    setHD:  () => { HOME_DIFF = data.v; renderProblemList(); },
     playL:  () => playList(data.diff, +data.i),
     // デイリー
     setDD:  () => { DAILY_DIFF = data.v; renderDaily(); },
@@ -909,6 +1081,11 @@ function dispatch(action, data) {
     },
     back:   () => backFromGame(),
     gHint:  () => gHint(),
+    useHint:() => useHint(),
+    closeHint:() => hideOverlay('hintov'),
+    gCheck: () => gCheckErrors(),
+    showHow:() => { closeMenu(); showOverlay('howto'); },
+    closeHow:() => hideOverlay('howto'),
     gReset: () => gReset(),
     gErase: () => gErase(),
     gNote:  () => gNote(),
@@ -938,14 +1115,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = e.target.closest('[data-a]');
     if (!el || el.tagName === 'INPUT') return;
     dispatch(el.dataset.a, el.dataset);
-  });
-
-  // チェックボックスのchange (設定)
-  mc.addEventListener('change', e => {
-    const el = e.target.closest('[data-a]');
-    if (!el || el.tagName !== 'INPUT') return;
-    SETTINGS[el.dataset.key] = el.checked;
-    Storage.set('settings', SETTINGS);
   });
 
   // キーボード操作 (デスクトップ向け)
