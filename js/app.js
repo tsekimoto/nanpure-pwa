@@ -400,6 +400,8 @@ function renderHome() {
         <div class="section-head"><h2>難易度別の問題一覧</h2></div>
         <div class="home-list">${diffItems}</div>
       </section>
+
+      <p class="home-footer-link"><a href="./privacy.html">プライバシーポリシー</a></p>
     </div>`;
 }
 
@@ -656,7 +658,8 @@ function renderGame() {
       <div class="hmenu-section">
         <div class="hmenu-label">メニュー</div>
         <button class="btn-hint" data-a="gHint">
-          <i class="ti ti-bulb" aria-hidden="true"></i> ヒントを使う（残り <strong id="hl">${GZ.hints}</strong> 回）
+          <i class="ti ti-bulb" aria-hidden="true"></i>
+          <span>ヒントを使う（残り <strong id="hl">${GZ.hints}</strong> 回）</span>
         </button>
         <button class="btn-menu" data-a="gCheck">
           <i class="ti ti-check" aria-hidden="true"></i> エラーチェック
