@@ -71,7 +71,7 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-#mc.no-scroll { overflow-y: hidden; }
+#mc.no-scroll { overflow-y: auto; }
 
 #app-ad {
   flex-shrink: 0;
@@ -118,6 +118,7 @@ body {
 .tbb .ti { font-size: 22px; }
 .tbb.on  { color: var(--accent); }
 #app.game-mode #btabs { display: none; }
+#app.game-mode #app-ad { display: none; }
 
 /* ── Shared Buttons ─────────────────────────────────────────── */
 .sdkd {
@@ -254,6 +255,12 @@ body {
   transition: transform 0.08s;
 }
 .sdk-npad:active { transform: scale(0.87); }
+.sdk-npad.full,
+.sdk-npad:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
 
 /* ── Hamburger Menu ─────────────────────────────────────────── */
 #hmenu {
@@ -499,6 +506,8 @@ body {
   margin-bottom: 10px;
 }
 .daily-status { margin-bottom: 10px; }
+.home-footer-link { text-align: center; font-size: 12px; margin-top: 4px; }
+.home-footer-link a { color: var(--text3); }
 
 /* ── Game Responsive Layout ────────────────────────────────── */
 .game-area {
@@ -508,7 +517,8 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 8px clamp(8px, 3vw, 12px) max(4px, env(safe-area-inset-bottom));
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .game-board {
   width: min(100%, 320px, calc(100dvh - 274px));

@@ -287,6 +287,21 @@ function progressLabel(pg) {
   return { icon: '🔵', label: '進行中', cls: 'status-progress' };
 }
 
+/** デイリー問題を選択できる最も古い日付 (今日から2ヶ月前) を YYYY-MM-DD で返す */
+function dailyFloorDate() {
+  const now = new Date();
+  return todayStr(new Date(now.getFullYear(), now.getMonth() - 2, now.getDate()));
+}
+
+/** デイリー問題を選択できる最も古い年月 { y, m } (0-indexed month) を返す */
+function dailyFloorMonth() {
+  const now = new Date();
+  let y = now.getFullYear();
+  let m = now.getMonth() - 2;
+  if (m < 0) { m += 12; y -= 1; }
+  return { y, m };
+}
+
 function dailyProgress(date, diff) {
   return Storage.get(`dpg:${date}:${diff}`);
 }
@@ -400,6 +415,8 @@ function renderHome() {
         <div class="section-head"><h2>難易度別の問題一覧</h2></div>
         <div class="home-list">${diffItems}</div>
       </section>
+
+      <p class="home-footer-link"><a href="./privacy.html">プライバシーポリシー</a></p>
     </div>`;
 }
 
@@ -470,6 +487,9 @@ function renderDaily() {
   const today  = todayStr();
   const now    = new Date();
   const isNow  = CAL_YEAR === now.getFullYear() && CAL_MONTH === now.getMonth();
+  const floorM = dailyFloorMonth();
+  const floorDate = dailyFloorDate();
+  const isAtFloor = CAL_YEAR === floorM.y && CAL_MONTH === floorM.m;
 
   const firstDay    = new Date(CAL_YEAR, CAL_MONTH, 1).getDay();
   const daysInMonth = new Date(CAL_YEAR, CAL_MONTH + 1, 0).getDate();
@@ -489,13 +509,14 @@ function renderDaily() {
       const isTd   = ds === today;
       const isSel  = ds === SEL_DATE;
       const isFut  = ds > today;
+      const isOld  = ds < floorDate;
       let cls      = 'cal-day';
       if (isSel)       cls += ' sel';
       else if (isTd)   cls += ' today';
-      else if (isFut)  cls += ' future';
+      else if (isFut || isOld) cls += ' future';
       if (isDailyAnyDone(ds)) cls += ' done';
 
-      const att = (!isFut) ? `data-a="selDt" data-date="${ds}"` : '';
+      const att = (!isFut && !isOld) ? `data-a="selDt" data-date="${ds}"` : '';
       row += `<td style="text-align:center"><div class="${cls}" ${att}>${day}${isDailyAnyDone(ds) ? '<span class="cal-dot">✓</span>' : ''}</div></td>`;
       day++;
     }
@@ -529,7 +550,8 @@ function renderDaily() {
       <!-- 月ナビゲーション -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <button data-a="calP"
-          style="padding:5px 12px;border:0.5px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);font-size:13px;font-family:inherit">◀</button>
+          style="padding:5px 12px;border:0.5px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);font-size:13px;font-family:inherit;opacity:${isAtFloor ? 0.3 : 1}"
+          ${isAtFloor ? 'disabled' : ''}>◀</button>
         <span style="font-size:15px;font-weight:500;color:var(--text)">${CAL_YEAR}年 ${MONTHS[CAL_MONTH]}</span>
         <button data-a="calN"
           style="padding:5px 12px;border:0.5px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);font-size:13px;font-family:inherit;opacity:${isNow ? 0.3 : 1}"
@@ -656,7 +678,8 @@ function renderGame() {
       <div class="hmenu-section">
         <div class="hmenu-label">メニュー</div>
         <button class="btn-hint" data-a="gHint">
-          <i class="ti ti-bulb" aria-hidden="true"></i> ヒントを使う（残り <strong id="hl">${GZ.hints}</strong> 回）
+          <i class="ti ti-bulb" aria-hidden="true"></i>
+          <span>ヒントを使う（残り <strong id="hl">${GZ.hints}</strong> 回）</span>
         </button>
         <button class="btn-menu" data-a="gCheck">
           <i class="ti ti-check" aria-hidden="true"></i> エラーチェック
@@ -750,6 +773,31 @@ function renderGame() {
       </div>
     </div>
 
+    <!-- エラーチェック前広告オーバーレイ -->
+    <div class="overlay" id="checkov" style="align-items:center;justify-content:center">
+      <div class="modal-card hint-card">
+        <div style="font-size:20px;font-weight:600;margin-bottom:8px">エラーチェック</div>
+        <p class="hint-copy">広告を確認してから、現在の入力にミスがないか確認します。</p>
+        <div class="ad-banner popup-ad" aria-label="広告">
+          <span style="font-size:10px">広告</span>
+          <span>広告スペース</span>
+          <span style="font-size:10px">PR</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button data-a="closeCheck"
+            style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
+                   border-radius:8px;font-size:13px;cursor:pointer;color:var(--text2);font-family:inherit">
+            キャンセル
+          </button>
+          <button data-a="runCheck"
+            style="flex:1;padding:10px 0;background:var(--text);border:none;border-radius:8px;
+                   font-size:13px;cursor:pointer;color:var(--bg);font-weight:500;font-family:inherit">
+            チェック実行
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 遊び方オーバーレイ -->
     <div class="overlay" id="howto" style="align-items:center;justify-content:center">
       <div class="modal-card howto-card">
@@ -781,6 +829,7 @@ function renderGame() {
   const pad = document.getElementById('pad');
   for (let n = 1; n <= 9; n++) {
     const b = document.createElement('button');
+    b.id = 'npad' + n;
     b.className = 'sdk-npad';
     b.dataset.a = 'gEnter';
     b.dataset.n  = n;
@@ -796,6 +845,7 @@ function renderGame() {
 
   updateAllCells();
   updateStatus();
+  updatePad();
   if (GZ.done) showOverlay('cov');
 }
 
@@ -875,6 +925,17 @@ function updateStatus() {
   }
 }
 
+/** 盤面に9個すべて入力済みの数字は、数字パッドで選択できないようにする */
+function updatePad() {
+  for (let n = 1; n <= 9; n++) {
+    const btn = document.getElementById('npad' + n);
+    if (!btn) continue;
+    const full = GZ.cells.filter(v => v === n).length >= 9;
+    btn.classList.toggle('full', full);
+    btn.disabled = full;
+  }
+}
+
 function showOverlay(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'flex';
@@ -903,6 +964,7 @@ function finalizeClear() {
   saveGame();
   updateAllCells();
   updateStatus();
+  updatePad();
   const ct = document.getElementById('clearTime');
   if (ct) ct.textContent = formatTime(GZ.elapsedMs);
   SOLVE_COUNT++;
@@ -915,11 +977,17 @@ function finalizeClear() {
   showOverlay('cov');
 }
 
-function gCheckErrors() {
+function gCheck() {
+  closeMenu();
+  if (!GZ.puzzle || GZ.done) return;
+  showOverlay('checkov');
+}
+
+function runCheck() {
+  hideOverlay('checkov');
   if (!GZ.puzzle || GZ.done) return;
   GZ.showErrors = true;
   GZ.lastCheck = GZ.wrong.size > 0 ? `ミス: ${GZ.wrong.size}箇所` : '現在の入力にエラーはありません';
-  closeMenu();
   updateAllCells();
   updateStatus();
 }
@@ -969,6 +1037,7 @@ function gEnter(n) {
 
   updateAllCells();
   updateStatus();
+  updatePad();
   saveGame();
 }
 
@@ -982,6 +1051,7 @@ function gErase() {
   GZ.lastCheck = null;
   updateCell(GZ.sel);
   updateStatus();
+  updatePad();
   saveGame();
 }
 
@@ -995,6 +1065,18 @@ function gNote() {
 
 function gHint() {
   closeMenu();
+  if (!GZ.puzzle || GZ.done) return;
+  if (GZ.hints <= 0) {
+    alert('ヒントの残り回数がありません。');
+    return;
+  }
+  // 選択中のマスがない・確定済み・初期値マスの場合は、未解決のマスを自動選択する
+  if (GZ.sel === null || GZ.puzzle[GZ.sel] !== 0 || GZ.cells[GZ.sel] === GZ.solution[GZ.sel]) {
+    const idx = GZ.cells.findIndex((v, i) => GZ.puzzle[i] === 0 && v !== GZ.solution[i]);
+    if (idx === -1) return; // 残りのマスがすべて正解済み
+    GZ.sel = idx;
+    updateAllCells();
+  }
   showOverlay('hintov');
 }
 
@@ -1017,6 +1099,7 @@ function useHint() {
   }
   updateAllCells();
   updateStatus();
+  updatePad();
   saveGame();
 }
 
@@ -1040,6 +1123,7 @@ function gReset() {
   if (lbl) lbl.textContent = 'メモ';
   updateAllCells();
   updateStatus();
+  updatePad();
   saveGame();
 }
 
@@ -1059,9 +1143,13 @@ function dispatch(action, data) {
     setDD:  () => { DAILY_DIFF = data.v; renderDaily(); },
     selDt:  () => { SEL_DATE = data.date; renderDaily(); },
     calP:   () => {
+      const floor = dailyFloorMonth();
+      if (CAL_YEAR === floor.y && CAL_MONTH === floor.m) return;
       CAL_MONTH--;
       if (CAL_MONTH < 0) { CAL_MONTH = 11; CAL_YEAR--; }
-      if (CAL_YEAR < 2024) { CAL_YEAR = 2024; CAL_MONTH = 0; }
+      if (CAL_YEAR < floor.y || (CAL_YEAR === floor.y && CAL_MONTH < floor.m)) {
+        CAL_YEAR = floor.y; CAL_MONTH = floor.m;
+      }
       renderDaily();
     },
     calN:   () => {
@@ -1083,7 +1171,9 @@ function dispatch(action, data) {
     gHint:  () => gHint(),
     useHint:() => useHint(),
     closeHint:() => hideOverlay('hintov'),
-    gCheck: () => gCheckErrors(),
+    gCheck: () => gCheck(),
+    runCheck:() => runCheck(),
+    closeCheck:() => hideOverlay('checkov'),
     showHow:() => { closeMenu(); showOverlay('howto'); },
     closeHow:() => hideOverlay('howto'),
     gReset: () => gReset(),
