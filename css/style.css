@@ -255,6 +255,12 @@ body {
   transition: transform 0.08s;
 }
 .sdk-npad:active { transform: scale(0.87); }
+.sdk-npad.full,
+.sdk-npad:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
 
 /* ── Hamburger Menu ─────────────────────────────────────────── */
 #hmenu {

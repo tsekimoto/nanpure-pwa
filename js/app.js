@@ -829,6 +829,7 @@ function renderGame() {
   const pad = document.getElementById('pad');
   for (let n = 1; n <= 9; n++) {
     const b = document.createElement('button');
+    b.id = 'npad' + n;
     b.className = 'sdk-npad';
     b.dataset.a = 'gEnter';
     b.dataset.n  = n;
@@ -844,6 +845,7 @@ function renderGame() {
 
   updateAllCells();
   updateStatus();
+  updatePad();
   if (GZ.done) showOverlay('cov');
 }
 
@@ -923,6 +925,17 @@ function updateStatus() {
   }
 }
 
+/** 盤面に9個すべて入力済みの数字は、数字パッドで選択できないようにする */
+function updatePad() {
+  for (let n = 1; n <= 9; n++) {
+    const btn = document.getElementById('npad' + n);
+    if (!btn) continue;
+    const full = GZ.cells.filter(v => v === n).length >= 9;
+    btn.classList.toggle('full', full);
+    btn.disabled = full;
+  }
+}
+
 function showOverlay(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'flex';
@@ -951,6 +964,7 @@ function finalizeClear() {
   saveGame();
   updateAllCells();
   updateStatus();
+  updatePad();
   const ct = document.getElementById('clearTime');
   if (ct) ct.textContent = formatTime(GZ.elapsedMs);
   SOLVE_COUNT++;
@@ -1023,6 +1037,7 @@ function gEnter(n) {
 
   updateAllCells();
   updateStatus();
+  updatePad();
   saveGame();
 }
 
@@ -1036,6 +1051,7 @@ function gErase() {
   GZ.lastCheck = null;
   updateCell(GZ.sel);
   updateStatus();
+  updatePad();
   saveGame();
 }
 
@@ -1083,6 +1099,7 @@ function useHint() {
   }
   updateAllCells();
   updateStatus();
+  updatePad();
   saveGame();
 }
 
@@ -1106,6 +1123,7 @@ function gReset() {
   if (lbl) lbl.textContent = 'メモ';
   updateAllCells();
   updateStatus();
+  updatePad();
   saveGame();
 }
 
