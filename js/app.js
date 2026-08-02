@@ -784,6 +784,7 @@ function renderGame() {
       <div class="modal-card hint-card">
         <div style="font-size:20px;font-weight:600;margin-bottom:8px">ヒントを使う</div>
         <p class="hint-copy">選択中のマスにヒントを入力します。</p>
+        ${confirmAdSlot('hint')}
         <div style="display:flex;gap:8px;margin-top:14px">
           <button data-a="closeHint"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
@@ -804,6 +805,7 @@ function renderGame() {
       <div class="modal-card hint-card">
         <div style="font-size:20px;font-weight:600;margin-bottom:8px">エラーチェック</div>
         <p class="hint-copy">現在の入力にミスがないか確認します。</p>
+        ${confirmAdSlot('check')}
         <div style="display:flex;gap:8px;margin-top:14px">
           <button data-a="closeCheck"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
@@ -885,6 +887,14 @@ function cellContent(i) {
       '</div>';
   }
   return val > 0 ? String(val) : '';
+}
+
+function confirmAdSlot(placement) {
+  return `
+    <div class="confirm-ad" data-ad-placement="${placement}" role="complementary" aria-label="広告">
+      <div class="confirm-ad-label">広告</div>
+      <div class="confirm-ad-body">広告スペース</div>
+    </div>`;
 }
 
 function updateCell(i) {
