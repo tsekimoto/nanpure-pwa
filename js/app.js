@@ -948,7 +948,7 @@ function updateCell(i) {
   const isSel   = i === GZ.sel;
   const isErr   = GZ.showErrors && GZ.wrong.has(i);
 
-  let isRel = false, isSame = false, isSamePeer = false, isSameBlock = false, isSelectedConflict = false;
+  let isRel = false, isSame = false;
   if (GZ.sel !== null) {
     const sr = Math.floor(GZ.sel / 9), sc = GZ.sel % 9;
     const sb = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
@@ -957,9 +957,6 @@ function updateCell(i) {
     const sv = GZ.cells[GZ.sel];
     isRel = !isSel && (r === sr || c === sc || b === sb);
     isSame = !isSel && sv !== 0 && GZ.cells[i] === sv;
-    isSamePeer = isSame && isRel;
-    isSameBlock = isSamePeer && b === sb;
-    isSelectedConflict = isSel && sv !== 0 && [...PEERS[i]].some(p => GZ.cells[p] === sv);
   }
 
   const co = i % 9, ro = Math.floor(i / 9);
@@ -970,9 +967,6 @@ function updateCell(i) {
     isSel  ? 'sel'  : '',
     (!isSel && isRel)  ? 'rel'  : '',
     isSame ? 'same' : '',
-    isSamePeer ? 'same-peer' : '',
-    isSameBlock ? 'same-block' : '',
-    isSelectedConflict ? 'same-conflict' : '',
     isErr ? 'err' : (isGiven ? 'given' : 'user'),
   ].filter(Boolean).join(' ');
 
@@ -1005,14 +999,13 @@ function updateStatus() {
   }
 }
 
-/** 盤面に9個すべて入力済みの数字は、数字パッドで選択できないようにする */
+/** 数字パッドは常に通常表示にする */
 function updatePad() {
   for (let n = 1; n <= 9; n++) {
     const btn = document.getElementById('npad' + n);
     if (!btn) continue;
-    const full = GZ.cells.filter(v => v === n).length >= 9;
-    btn.classList.toggle('full', full);
-    btn.disabled = full;
+    btn.classList.remove('full');
+    btn.disabled = false;
   }
 }
 

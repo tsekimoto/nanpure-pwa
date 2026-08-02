@@ -243,27 +243,11 @@ body {
   color: var(--accent);
   font-weight: 700;
 }
-.sdk-cell.same-peer {
-  background: rgba(245,158,11,0.18);
-  box-shadow: inset 0 0 0 2px rgba(245,158,11,0.55);
-}
-.sdk-cell.same-block {
-  background: rgba(245,158,11,0.28);
-  box-shadow: inset 0 0 0 2px var(--warn);
-}
-.sdk-cell.same-conflict {
-  box-shadow: inset 0 0 0 2px var(--warn);
-}
-
 /* Number colors */
 .sdk-cell.given { font-weight: 700; color: var(--text); }
 .sdk-cell.user  { color: var(--accent); font-weight: 500; }
 .sdk-cell.same.given,
 .sdk-cell.same.user { color: var(--accent); }
-.sdk-cell.same-peer.given,
-.sdk-cell.same-peer.user,
-.sdk-cell.same-block.given,
-.sdk-cell.same-block.user { color: var(--warn); }
 .sdk-cell.err   { color: var(--error) !important; }
 
 /* Memo grid inside a cell */
@@ -328,13 +312,6 @@ body {
   transition: transform 0.08s;
 }
 .sdk-npad:active { transform: scale(0.87); }
-.sdk-npad.full,
-.sdk-npad:disabled {
-  opacity: 0.35;
-  cursor: default;
-  pointer-events: none;
-}
-
 /* ── Hamburger Menu ─────────────────────────────────────────── */
 #hmenu {
   display: none;
