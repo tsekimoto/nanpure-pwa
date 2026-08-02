@@ -576,6 +576,7 @@ function playList(diff, i) {
   if (!pd) {
     pd = generatePuzzle(diff);
     Storage.set(`lp:${diff}:${i}`, pd);
+    Storage.del(`lpg:${diff}:${i}`);
   }
   enterGame(pd, `lpg:${diff}:${i}`, `${DLBL[diff]} — 問題 ${i + 1}`, 'list');
 }
@@ -1246,6 +1247,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (document.visibilityState === 'visible') {
+      if (SCREEN === 'game' && GZ.sessionStart) GZ.sessionStart = Date.now();
       refreshTodaySelection();
     }
   });
