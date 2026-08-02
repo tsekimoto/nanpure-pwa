@@ -137,6 +137,73 @@ body {
   transition: opacity 0.1s;
 }
 .pitm:active { opacity: 0.7; }
+.level-panel {
+  margin: 0 0 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+}
+.level-panel-head,
+.home-list-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.level-panel-head small {
+  display: block;
+  color: var(--text2);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+.level-panel-head strong {
+  display: block;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.1;
+}
+.level-count,
+.level-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+.level-count { padding: 5px 9px; }
+.level-badge {
+  min-width: 48px;
+  padding: 5px 8px;
+}
+.level-meter {
+  height: 7px;
+  margin: 10px 0 8px;
+  border-radius: 999px;
+  background: var(--bg3);
+  overflow: hidden;
+}
+.level-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.level-panel p {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.level-divider {
+  margin: 18px 2px 8px;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 700;
+}
 
 /* ── Sudoku Board ───────────────────────────────────────────── */
 .sdk-board {
@@ -171,11 +238,32 @@ body {
 /* Cell states */
 .sdk-cell.sel  { background: var(--acc-bg)  !important; }
 .sdk-cell.rel  { background: var(--bg2); }
-.sdk-cell.same { background: var(--acc-bg2); }
+.sdk-cell.same {
+  background: var(--acc-bg2);
+  color: var(--accent);
+  font-weight: 700;
+}
+.sdk-cell.same-peer {
+  background: rgba(245,158,11,0.18);
+  box-shadow: inset 0 0 0 2px rgba(245,158,11,0.55);
+}
+.sdk-cell.same-block {
+  background: rgba(245,158,11,0.28);
+  box-shadow: inset 0 0 0 2px var(--warn);
+}
+.sdk-cell.same-conflict {
+  box-shadow: inset 0 0 0 2px var(--warn);
+}
 
 /* Number colors */
 .sdk-cell.given { font-weight: 700; color: var(--text); }
 .sdk-cell.user  { color: var(--accent); font-weight: 500; }
+.sdk-cell.same.given,
+.sdk-cell.same.user { color: var(--accent); }
+.sdk-cell.same-peer.given,
+.sdk-cell.same-peer.user,
+.sdk-cell.same-block.given,
+.sdk-cell.same-block.user { color: var(--warn); }
 .sdk-cell.err   { color: var(--error) !important; }
 
 /* Memo grid inside a cell */

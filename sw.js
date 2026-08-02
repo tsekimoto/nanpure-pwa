@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nanpure-pwa-v1.0.5';
+const CACHE_NAME = 'nanpure-pwa-v1.0.6';
 const FETCH_TIMEOUT_MS = 4000;
 const ASSETS = [
   './',

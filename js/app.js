@@ -212,8 +212,8 @@ const Storage = {
    3. アプリ設定定数
    ============================================================ */
 
-const PROBLEM_COUNT = 10;   // 問題一覧の問題数
-const HINT_MAX      = 3;    // 1問あたりのヒント回数
+const LIST_BATCH_SIZE = 10; // 一覧は10問クリアごとに次の10問を解放
+const HINT_MAX        = 3;  // 1問あたりのヒント回数
 
 const DLBL = { easy: '初級', medium: '中級', hard: '上級' };
 
@@ -313,6 +313,36 @@ function isDailyAnyDone(date) {
   return ['easy', 'medium', 'hard'].some(d => isDailyDone(date, d));
 }
 
+function listProgressStats(diff) {
+  let done = 0;
+  let started = 0;
+
+  for (const key of Storage.keys(`lpg:${diff}:`)) {
+    const pg = Storage.get(key);
+    if (!pg) continue;
+    if (pg.done) done++;
+    else started++;
+  }
+
+  const unlockedKey = `lpu:${diff}`;
+  const saved = Storage.get(unlockedKey);
+  const savedUnlocked = Math.max(LIST_BATCH_SIZE, saved?.unlocked || 0);
+  const doneUnlocked = (Math.floor(done / LIST_BATCH_SIZE) + 1) * LIST_BATCH_SIZE;
+  const unlocked = Math.max(savedUnlocked, doneUnlocked);
+  if (unlocked > savedUnlocked) Storage.set(unlockedKey, { unlocked });
+
+  const level = Math.ceil(unlocked / LIST_BATCH_SIZE);
+  const levelBase = (level - 1) * LIST_BATCH_SIZE;
+  const levelProgress = Math.min(LIST_BATCH_SIZE, Math.max(0, done - levelBase));
+  const remaining = Math.max(0, unlocked - done);
+  const progressPct = Math.round((levelProgress / LIST_BATCH_SIZE) * 100);
+  return { done, started, level, unlocked, remaining, levelProgress, progressPct, nextLevel: level + 1 };
+}
+
+function unlockedProblemCount(diff) {
+  return listProgressStats(diff).unlocked;
+}
+
 /* ============================================================
    6. ナビゲーション
    ============================================================ */
@@ -346,12 +376,13 @@ function loadProblems(diff) {
   if (HOME_LOADING[diff]) return;
 
   HOME_LOADING[diff] = true;
-  HOME_PROBS[diff] = [];
+  const targetCount = unlockedProblemCount(diff);
+  const arr = Array.isArray(HOME_PROBS[diff]) ? [...HOME_PROBS[diff]] : [];
+  HOME_PROBS[diff] = arr;
   if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
 
-  const arr = [];
   const loadNext = i => {
-    if (i >= PROBLEM_COUNT) {
+    if (i >= targetCount) {
       HOME_PROBS[diff] = arr;
       HOME_LOADING[diff] = false;
       if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
@@ -364,7 +395,7 @@ function loadProblems(diff) {
       Storage.set(`lp:${diff}:${i}`, pd);
     }
     const pg = Storage.get(`lpg:${diff}:${i}`);
-    arr.push({ ...pd, pg });
+    arr[i] = { ...pd, pg };
     HOME_PROBS[diff] = [...arr];
 
     if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
@@ -378,15 +409,20 @@ function renderHome() {
   const mc = document.getElementById('mc');
   const today = todayStr();
   const dailyDone = ['easy', 'medium', 'hard'].filter(d => isDailyDone(today, d));
-  const diffItems = ['easy', 'medium', 'hard'].map(d => `
-    <button class="home-list-item" data-a="openList" data-v="${d}">
-      <span>
-        <strong>${DLBL[d]}</strong>
-        <small>${PROBLEM_COUNT}問の一覧を見る</small>
-      </span>
-      <span class="home-list-arrow">›</span>
-    </button>
-  `).join('');
+  const diffItems = ['easy', 'medium', 'hard'].map(d => {
+    const stats = listProgressStats(d);
+    return `
+      <button class="home-list-item" data-a="openList" data-v="${d}">
+        <span>
+          <strong>${DLBL[d]}</strong>
+          <small>${stats.unlocked}問解放中 / Lv.${stats.nextLevel}まであと${stats.remaining}問</small>
+        </span>
+        <span class="home-list-meta">
+          <span class="level-badge">Lv.${stats.level}</span>
+          <span class="home-list-arrow">›</span>
+        </span>
+      </button>`;
+  }).join('');
 
   mc.innerHTML = `
     <div class="screen home-screen">
@@ -422,7 +458,10 @@ function renderHome() {
 function problemListItems(probs, diff) {
   return probs.map((p, i) => {
     const status = progressLabel(p.pg);
-    return `
+    const levelHead = i % LIST_BATCH_SIZE === 0
+      ? `<div class="level-divider">Lv.${Math.floor(i / LIST_BATCH_SIZE) + 1} 解放分 / 問題 ${i + 1}〜${i + LIST_BATCH_SIZE}</div>`
+      : '';
+    return `${levelHead}
       <div class="pitm ${status.cls}" data-a="playL" data-diff="${diff}" data-i="${i}">
         <div>
           <div class="problem-title">問題 ${i + 1}</div>
@@ -441,6 +480,7 @@ function renderProblemList() {
   const diff  = HOME_DIFF;
   const probs = HOME_PROBS[diff];
   const loading = HOME_LOADING[diff];
+  const stats = listProgressStats(diff);
 
   let body = '';
   if (probs === null) {
@@ -458,10 +498,13 @@ function renderProblemList() {
         <p>${DLBL[diff]}の問題を生成中...</p>
       </div>`;
   } else {
+    if (probs.length < stats.unlocked && !loading) {
+      requestAnimationFrame(() => loadProblems(diff));
+    }
     const progress = loading ? `
       <div class="loading-inline">
         <div class="loading-spinner small" aria-hidden="true"></div>
-        <span>${probs.length} / ${PROBLEM_COUNT} 問を読み込みました。残りを生成中...</span>
+        <span>${probs.length} / ${stats.unlocked} 問を読み込みました。残りを生成中...</span>
       </div>` : '';
     body = progress + problemListItems(probs, diff);
   }
@@ -470,7 +513,17 @@ function renderProblemList() {
     <div class="screen">
       <button class="back-line" data-a="goHome">‹ 難易度リストへ戻る</button>
       <h1 class="screen-title">${DLBL[diff]}の問題一覧</h1>
-      <p class="screen-lead">問題を選択してナンプレを開始してください。</p>
+      <div class="level-panel">
+        <div class="level-panel-head">
+          <span>
+            <small>現在のレベル</small>
+            <strong>Lv.${stats.level}</strong>
+          </span>
+          <span class="level-count">${stats.unlocked}問解放中</span>
+        </div>
+        <div class="level-meter" aria-hidden="true"><span style="width:${stats.progressPct}%"></span></div>
+        <p>Lv.${stats.nextLevel}まで ${stats.levelProgress} / ${LIST_BATCH_SIZE} 問クリア。あと${stats.remaining}問で次の10問が解放されます。</p>
+      </div>
       ${body}
     </div>`;
 }
@@ -895,15 +948,18 @@ function updateCell(i) {
   const isSel   = i === GZ.sel;
   const isErr   = GZ.showErrors && GZ.wrong.has(i);
 
-  let isRel = false, isSame = false;
-  if (GZ.sel !== null && !isSel) {
+  let isRel = false, isSame = false, isSamePeer = false, isSameBlock = false, isSelectedConflict = false;
+  if (GZ.sel !== null) {
     const sr = Math.floor(GZ.sel / 9), sc = GZ.sel % 9;
     const sb = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
     const r  = Math.floor(i / 9), c = i % 9;
     const b  = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-    isRel  = (r === sr || c === sc || b === sb);
     const sv = GZ.cells[GZ.sel];
-    isSame = !isRel && sv !== 0 && GZ.cells[i] === sv;
+    isRel = !isSel && (r === sr || c === sc || b === sb);
+    isSame = !isSel && sv !== 0 && GZ.cells[i] === sv;
+    isSamePeer = isSame && isRel;
+    isSameBlock = isSamePeer && b === sb;
+    isSelectedConflict = isSel && sv !== 0 && [...PEERS[i]].some(p => GZ.cells[p] === sv);
   }
 
   const co = i % 9, ro = Math.floor(i / 9);
@@ -913,7 +969,10 @@ function updateCell(i) {
     (ro === 2 || ro === 5) ? 'bb' : '',
     isSel  ? 'sel'  : '',
     (!isSel && isRel)  ? 'rel'  : '',
-    (!isSel && !isRel && isSame) ? 'same' : '',
+    isSame ? 'same' : '',
+    isSamePeer ? 'same-peer' : '',
+    isSameBlock ? 'same-block' : '',
+    isSelectedConflict ? 'same-conflict' : '',
     isErr ? 'err' : (isGiven ? 'given' : 'user'),
   ].filter(Boolean).join(' ');
 
