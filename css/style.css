@@ -191,7 +191,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(4px, 1.4vw, 7px);
+  font-size: clamp(7px, 2.4vw, 10px);
   color: var(--accent);
   font-weight: 600;
   line-height: 1;
