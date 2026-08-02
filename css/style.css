@@ -12,10 +12,15 @@
   --text3:   #aeaeb2;
   --border:  #c7c7cc;
   --border2: #e5e5ea;
-  --accent:  #2563eb;
-  --acc-bg:  rgba(37,99,235,0.12);
-  --acc-bg2: rgba(37,99,235,0.07);
-  --error:   #dc2626;
+  --accent:  #005a9c;
+  --acc-bg:  #d8ecff;
+  --acc-bg2: #eef6ff;
+  --rel-bg:  #eeeeee;
+  --same-bg: #fff2a8;
+  --same-text: #4f3b00;
+  --same-ring: #8a6d00;
+  --err-bg:  #ffe0e6;
+  --error:   #b00020;
   --warn:    #f59e0b;
   --ok:      #16a34a;
   --menu-w:  220px;
@@ -31,10 +36,15 @@
     --text3:   #636366;
     --border:  #3a3a3c;
     --border2: #2c2c2e;
-    --accent:  #4c8ef7;
-    --acc-bg:  rgba(76,142,247,0.15);
-    --acc-bg2: rgba(76,142,247,0.08);
-    --error:   #f87171;
+    --accent:  #8cc8ff;
+    --acc-bg:  rgba(140,200,255,0.28);
+    --acc-bg2: rgba(140,200,255,0.14);
+    --rel-bg:  rgba(255,255,255,0.10);
+    --same-bg: rgba(255,210,63,0.30);
+    --same-text: #ffe08a;
+    --same-ring: #facc15;
+    --err-bg:  rgba(255,111,125,0.22);
+    --error:   #ff8a9a;
     --warn:    #fbbf24;
     --ok:      #4ade80;
   }
@@ -236,19 +246,27 @@ body {
 .sdk-cell.bb { border-bottom: 2.5px solid var(--text); }
 
 /* Cell states */
-.sdk-cell.sel  { background: var(--acc-bg)  !important; }
-.sdk-cell.rel  { background: var(--bg2); }
+.sdk-cell.sel  {
+  background: var(--acc-bg) !important;
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+.sdk-cell.rel  { background: var(--rel-bg); }
 .sdk-cell.same {
-  background: var(--acc-bg2);
-  color: var(--accent);
+  background: var(--same-bg);
+  color: var(--same-text);
   font-weight: 700;
+  box-shadow: inset 0 0 0 3px var(--same-ring);
 }
 /* Number colors */
 .sdk-cell.given { font-weight: 700; color: var(--text); }
 .sdk-cell.user  { color: var(--accent); font-weight: 500; }
 .sdk-cell.same.given,
-.sdk-cell.same.user { color: var(--accent); }
-.sdk-cell.err   { color: var(--error) !important; }
+.sdk-cell.same.user { color: var(--same-text); }
+.sdk-cell.err {
+  background: var(--err-bg) !important;
+  box-shadow: inset 0 0 0 3px var(--error);
+  color: var(--error) !important;
+}
 
 /* Memo grid inside a cell */
 .sdkmn {
