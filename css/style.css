@@ -4,50 +4,27 @@
 
 /* ── CSS Variables ─────────────────────────────────────────── */
 :root {
+  color-scheme: light;
   --bg:      #ffffff;
-  --bg2:     #f2f2f7;
-  --bg3:     #e5e5ea;
-  --text:    #1c1c1e;
-  --text2:   #6e6e73;
-  --text3:   #aeaeb2;
-  --border:  #c7c7cc;
-  --border2: #e5e5ea;
-  --accent:  #005a9c;
-  --acc-bg:  #d8ecff;
-  --acc-bg2: #eef6ff;
-  --rel-bg:  #eeeeee;
-  --same-bg: #fff2a8;
-  --same-text: #4f3b00;
-  --same-ring: #8a6d00;
-  --err-bg:  #ffe0e6;
+  --bg2:     #f5f6f8;
+  --bg3:     #e3e6ea;
+  --text:    #111827;
+  --text2:   #4b5563;
+  --text3:   #6b7280;
+  --border:  #8f98a3;
+  --border2: #c7ccd4;
+  --accent:  #004b9b;
+  --acc-bg:  #e8f3ff;
+  --acc-bg2: #f5faff;
+  --rel-bg:  #e9ecef;
+  --same-bg: #fff1a6;
+  --same-text: #3d2f00;
+  --same-ring: #7a5c00;
+  --err-bg:  #ffe3e8;
   --error:   #b00020;
-  --warn:    #f59e0b;
-  --ok:      #16a34a;
+  --warn:    #b45309;
+  --ok:      #16703a;
   --menu-w:  220px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg:      #1c1c1e;
-    --bg2:     #2c2c2e;
-    --bg3:     #3a3a3c;
-    --text:    #f5f5f7;
-    --text2:   #aeaeb2;
-    --text3:   #636366;
-    --border:  #3a3a3c;
-    --border2: #2c2c2e;
-    --accent:  #8cc8ff;
-    --acc-bg:  rgba(140,200,255,0.28);
-    --acc-bg2: rgba(140,200,255,0.14);
-    --rel-bg:  rgba(255,255,255,0.10);
-    --same-bg: rgba(255,210,63,0.30);
-    --same-text: #ffe08a;
-    --same-ring: #facc15;
-    --err-bg:  rgba(255,111,125,0.22);
-    --error:   #ff8a9a;
-    --warn:    #fbbf24;
-    --ok:      #4ade80;
-  }
 }
 
 /* ── Reset ─────────────────────────────────────────────────── */
@@ -236,7 +213,7 @@ body {
   border-right: 0.5px solid var(--border2);
   border-bottom: 0.5px solid var(--border2);
   box-sizing: border-box;
-  transition: background 0.07s;
+  transition: background 0.07s, box-shadow 0.07s;
   position: relative;
   font-size: clamp(18px, 5.4vw, 26px);
 }
@@ -247,8 +224,9 @@ body {
 
 /* Cell states */
 .sdk-cell.sel  {
-  background: var(--acc-bg) !important;
-  box-shadow: inset 0 0 0 3px var(--accent);
+  background: var(--bg) !important;
+  box-shadow: inset 0 0 0 4px var(--accent);
+  z-index: 1;
 }
 .sdk-cell.rel  { background: var(--rel-bg); }
 .sdk-cell.same {
@@ -259,7 +237,7 @@ body {
 }
 /* Number colors */
 .sdk-cell.given { font-weight: 700; color: var(--text); }
-.sdk-cell.user  { color: var(--accent); font-weight: 500; }
+.sdk-cell.user  { color: var(--accent); font-weight: 700; }
 .sdk-cell.same.given,
 .sdk-cell.same.user { color: var(--same-text); }
 .sdk-cell.err {
@@ -381,10 +359,6 @@ body {
   gap: 6px;
   font-family: inherit;
 }
-@media (prefers-color-scheme: dark) {
-  .btn-hint { color: #fcd34d; }
-}
-
 .btn-reset {
   width: 100%;
   padding: 9px;
