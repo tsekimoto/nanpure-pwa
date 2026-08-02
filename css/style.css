@@ -31,6 +31,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 button { font-family: inherit; }
 
+html {
+  background: var(--bg);
+}
+
 /* ── Base ──────────────────────────────────────────────────── */
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -48,6 +52,7 @@ body {
   max-width: 560px;
   margin: 0 auto;
   position: relative;
+  background: var(--bg);
 }
 
 #mc {
