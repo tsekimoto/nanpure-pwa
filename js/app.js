@@ -213,7 +213,6 @@ const Storage = {
    ============================================================ */
 
 const PROBLEM_COUNT = 10;   // 問題一覧の問題数
-const AD_EVERY      = 3;    // 何回クリアごとに広告を表示するか
 const HINT_MAX      = 3;    // 1問あたりのヒント回数
 
 const DLBL = { easy: '初級', medium: '中級', hard: '上級' };
@@ -234,6 +233,7 @@ let HOME_LOADING = { easy: false, medium: false, hard: false };
 let CAL_YEAR  = new Date().getFullYear();
 let CAL_MONTH = new Date().getMonth();   // 0-indexed
 let SEL_DATE  = todayStr();
+let AUTO_TODAY_DATE = SEL_DATE;
 let DAILY_DIFF = 'medium';
 
 // ── ゲーム状態 ──
@@ -255,7 +255,6 @@ let DAILY_DIFF = 'medium';
 let GZ = {};
 
 let MENU_OPEN  = false;
-let SOLVE_COUNT = Storage.get('solveCount') || 0;
 
 /* ============================================================
    5. ユーティリティ
@@ -573,7 +572,11 @@ function renderDaily() {
    ============================================================ */
 
 function playList(diff, i) {
-  const pd = (HOME_PROBS[diff]?.[i]) || Storage.get(`lp:${diff}:${i}`) || generatePuzzle(diff);
+  let pd = (HOME_PROBS[diff]?.[i]) || Storage.get(`lp:${diff}:${i}`);
+  if (!pd) {
+    pd = generatePuzzle(diff);
+    Storage.set(`lp:${diff}:${i}`, pd);
+  }
   enterGame(pd, `lpg:${diff}:${i}`, `${DLBL[diff]} — 問題 ${i + 1}`, 'list');
 }
 
@@ -598,8 +601,8 @@ function enterGame(pd, pgKey, title, backTo) {
     hints:    pg ? (pg.hints ?? HINT_MAX) : HINT_MAX,
     wrong:    new Set(pg ? (pg.wrong || []) : []),
     done:     pg ? (pg.done || false) : false,
-    startedAt: pg?.startedAt || Date.now(),
     elapsedMs: pg?.elapsedMs || 0,
+    sessionStart: Date.now(),
     completedAt: pg?.completedAt || null,
     showErrors: false,
     lastCheck: null,
@@ -620,20 +623,29 @@ function enterGame(pd, pgKey, title, backTo) {
   renderGame();
 }
 
+function syncElapsedTime() {
+  if (SCREEN !== 'game' || !GZ.puzzle || GZ.done || !GZ.sessionStart) return;
+  const now = Date.now();
+  GZ.elapsedMs = (GZ.elapsedMs || 0) + Math.max(0, now - GZ.sessionStart);
+  GZ.sessionStart = now;
+}
+
 function saveGame() {
+  if (!GZ.pgKey) return;
+  syncElapsedTime();
   Storage.set(GZ.pgKey, {
     cells: GZ.cells,
     notes: GZ.notes,
     hints: GZ.hints,
     wrong: [...GZ.wrong],
     done:  GZ.done,
-    startedAt: GZ.startedAt,
-    elapsedMs: GZ.elapsedMs || (GZ.done ? Date.now() - GZ.startedAt : 0),
+    elapsedMs: GZ.elapsedMs || 0,
     completedAt: GZ.completedAt,
   });
 }
 
 function backFromGame() {
+  saveGame();
   // 問題一覧の進捗を更新
   if (GZ.backTo === 'list' && GZ.pgKey?.startsWith('lpg:')) {
     const [, diff, idx] = GZ.pgKey.split(':');
@@ -642,6 +654,24 @@ function backFromGame() {
     }
   }
   nav(GZ.backTo || 'home');
+}
+
+function refreshTodaySelection() {
+  const today = todayStr();
+  if (today !== AUTO_TODAY_DATE) {
+    const shouldFollowToday = SEL_DATE === AUTO_TODAY_DATE;
+    AUTO_TODAY_DATE = today;
+
+    if (shouldFollowToday) {
+      const now = new Date();
+      SEL_DATE = today;
+      CAL_YEAR = now.getFullYear();
+      CAL_MONTH = now.getMonth();
+    }
+  }
+
+  if (SCREEN === 'home') renderHome();
+  if (SCREEN === 'daily') renderDaily();
 }
 
 /* ============================================================
@@ -748,16 +778,11 @@ function renderGame() {
       </div>
     </div>
 
-    <!-- ヒント前広告オーバーレイ -->
+    <!-- ヒント確認オーバーレイ -->
     <div class="overlay" id="hintov" style="align-items:center;justify-content:center">
       <div class="modal-card hint-card">
         <div style="font-size:20px;font-weight:600;margin-bottom:8px">ヒントを使う</div>
-        <p class="hint-copy">広告を確認してから、選択中のマスにヒントを入力します。</p>
-        <div class="ad-banner popup-ad" aria-label="広告">
-          <span style="font-size:10px">広告</span>
-          <span>広告スペース</span>
-          <span style="font-size:10px">PR</span>
-        </div>
+        <p class="hint-copy">選択中のマスにヒントを入力します。</p>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button data-a="closeHint"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
@@ -773,16 +798,11 @@ function renderGame() {
       </div>
     </div>
 
-    <!-- エラーチェック前広告オーバーレイ -->
+    <!-- エラーチェック確認オーバーレイ -->
     <div class="overlay" id="checkov" style="align-items:center;justify-content:center">
       <div class="modal-card hint-card">
         <div style="font-size:20px;font-weight:600;margin-bottom:8px">エラーチェック</div>
-        <p class="hint-copy">広告を確認してから、現在の入力にミスがないか確認します。</p>
-        <div class="ad-banner popup-ad" aria-label="広告">
-          <span style="font-size:10px">広告</span>
-          <span>広告スペース</span>
-          <span style="font-size:10px">PR</span>
-        </div>
+        <p class="hint-copy">現在の入力にミスがないか確認します。</p>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button data-a="closeCheck"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
@@ -956,8 +976,8 @@ function closeMenu() {
 
 
 function finalizeClear() {
+  syncElapsedTime();
   GZ.done = true;
-  if (!GZ.elapsedMs) GZ.elapsedMs = Date.now() - GZ.startedAt;
   if (!GZ.completedAt) GZ.completedAt = new Date().toISOString();
   GZ.showErrors = false;
   GZ.lastCheck = null;
@@ -967,13 +987,6 @@ function finalizeClear() {
   updatePad();
   const ct = document.getElementById('clearTime');
   if (ct) ct.textContent = formatTime(GZ.elapsedMs);
-  SOLVE_COUNT++;
-  Storage.set('solveCount', SOLVE_COUNT);
-  // ★ 広告: AD_EVERY 回に1回インタースティシャル
-  if (SOLVE_COUNT % AD_EVERY === 0) {
-    console.log('[広告] インタースティシャル広告を表示するタイミング');
-    // PWA版では AdSense 等のWeb広告を使用する。初期リリースでは未実装。
-  }
   showOverlay('cov');
 }
 
@@ -1113,7 +1126,7 @@ function gReset() {
   GZ.noteMode = false;
   GZ.elapsedMs = 0;
   GZ.completedAt = null;
-  GZ.startedAt = Date.now();
+  GZ.sessionStart = Date.now();
   GZ.showErrors = false;
   GZ.lastCheck = null;
   closeMenu();
@@ -1226,6 +1239,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      saveGame();
+      return;
+    }
+    if (document.visibilityState === 'visible') {
+      refreshTodaySelection();
+    }
+  });
+  window.addEventListener('pagehide', saveGame);
 
   // 初期表示
   nav('home');

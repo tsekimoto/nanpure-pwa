@@ -73,22 +73,6 @@ body {
 
 #mc.no-scroll { overflow-y: auto; }
 
-#app-ad {
-  flex-shrink: 0;
-  margin: 0;
-  border-top: 0.5px solid var(--border2);
-  background: var(--bg2);
-  color: var(--text3);
-  min-height: 44px;
-  padding: 8px 12px max(8px, env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-}
-#app-ad .ad-label { font-size: 10px; }
-
 /* ── Bottom Tab Bar ─────────────────────────────────────────── */
 #btabs {
   flex-shrink: 0;
@@ -118,7 +102,6 @@ body {
 .tbb .ti { font-size: 22px; }
 .tbb.on  { color: var(--accent); }
 #app.game-mode #btabs { display: none; }
-#app.game-mode #app-ad { display: none; }
 
 /* ── Shared Buttons ─────────────────────────────────────────── */
 .sdkd {
@@ -342,20 +325,7 @@ body {
   border: 0.5px solid var(--border);
 }
 
-/* ── Ad Banner ──────────────────────────────────────────────── */
-.ad-banner {
-  background: var(--bg2);
-  border: 0.5px solid var(--border2);
-  border-radius: 8px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--text3);
-  margin-top: 8px;
-}
-.popup-ad { min-height: 74px; margin-top: 12px; }
+/* ── Hint Modal ─────────────────────────────────────────────── */
 .hint-card { width: min(320px, 88%); }
 .hint-copy { color: var(--text2); font-size: 13px; line-height: 1.6; }
 
