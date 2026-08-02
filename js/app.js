@@ -704,20 +704,20 @@ function renderDaily() {
         ${selectedPg?.done ? 'もう一度見る' : 'この問題を解く'}
       </button>
     </div>` :
-    '<p style="margin-top:14px;font-size:13px;color:var(--text3)">日付を選択してください</p>';
+    '<p style="margin-top:14px;font-size:16px;color:var(--text3)">日付を選択してください</p>';
 
   mc.innerHTML = `
     <div class="screen">
-      <h1 style="font-size:18px;font-weight:500;color:var(--text);margin-bottom:14px">デイリー</h1>
+      <h1 style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:14px">デイリー</h1>
 
       <!-- 月ナビゲーション -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <button data-a="calP"
-          style="padding:5px 12px;border:0.5px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);font-size:13px;font-family:inherit;opacity:${isAtFloor ? 0.3 : 1}"
+          style="padding:7px 14px;border:0.5px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);font-size:16px;font-family:inherit;opacity:${isAtFloor ? 0.3 : 1}"
           ${isAtFloor ? 'disabled' : ''}>◀</button>
-        <span style="font-size:15px;font-weight:500;color:var(--text)">${CAL_YEAR}年 ${MONTHS[CAL_MONTH]}</span>
+        <span style="font-size:18px;font-weight:700;color:var(--text)">${CAL_YEAR}年 ${MONTHS[CAL_MONTH]}</span>
         <button data-a="calN"
-          style="padding:5px 12px;border:0.5px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);font-size:13px;font-family:inherit;opacity:${isNow ? 0.3 : 1}"
+          style="padding:7px 14px;border:0.5px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);font-size:16px;font-family:inherit;opacity:${isNow ? 0.3 : 1}"
           ${isNow ? 'disabled' : ''}>▶</button>
       </div>
 
@@ -855,15 +855,15 @@ function renderGame() {
       <button data-a="menuT"
         style="padding:5px 8px;background:transparent;border:none;cursor:pointer;color:var(--text)"
         aria-label="メニュー">
-        <i class="ti ti-menu-2" style="font-size:22px" aria-hidden="true"></i>
+        <i class="ti ti-menu-2" style="font-size:24px" aria-hidden="true"></i>
       </button>
-      <span style="font-size:13px;font-weight:500;color:var(--text);flex:1;text-align:center;
+      <span style="font-size:16px;font-weight:700;color:var(--text);flex:1;text-align:center;
             padding:0 8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">
         ${GZ.title}
       </span>
       <button data-a="back"
         style="padding:5px 8px;background:transparent;border:none;cursor:pointer;
-               color:var(--text2);font-size:13px;font-family:inherit">
+               color:var(--text2);font-size:16px;font-family:inherit">
         戻る
       </button>
     </div>
@@ -896,22 +896,22 @@ function renderGame() {
 
       <!-- ステータス行 -->
       <div class="game-status-row">
-        <div id="serr" style="font-size:12px;color:var(--text3)">未チェック</div>
+        <div id="serr" style="font-size:16px;color:var(--text3)">未チェック</div>
         <div style="display:flex;align-items:center;gap:2px">
-          <span id="h0" style="font-size:14px">●</span>
-          <span id="h1" style="font-size:14px">●</span>
-          <span id="h2" style="font-size:14px">●</span>
+          <span id="h0" style="font-size:16px">●</span>
+          <span id="h1" style="font-size:16px">●</span>
+          <span id="h2" style="font-size:16px">●</span>
         </div>
       </div>
 
       <!-- コントロール行 -->
       <div class="game-controls">
         <button class="sdk-ctrl" data-a="gErase">
-          <i class="ti ti-eraser" style="font-size:15px" aria-hidden="true"></i>
+          <i class="ti ti-eraser" style="font-size:18px" aria-hidden="true"></i>
           <span>消す</span>
         </button>
         <button class="sdk-ctrl" id="nbtn" data-a="gNote">
-          <i class="ti ti-pencil" style="font-size:15px" aria-hidden="true"></i>
+          <i class="ti ti-pencil" style="font-size:18px" aria-hidden="true"></i>
           <span id="nlbl">メモ</span>
         </button>
         <div style="flex:1"></div>
@@ -925,18 +925,18 @@ function renderGame() {
     <div class="overlay" id="cov" style="align-items:center;justify-content:center">
       <div class="modal-card">
         <div style="font-size:44px;margin-bottom:8px">🎉</div>
-        <div style="font-size:20px;font-weight:500;color:var(--text);margin-bottom:6px">クリア！</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${GZ.title}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--text);margin-bottom:6px">クリア！</div>
+        <div style="font-size:16px;color:var(--text2);margin-bottom:6px">${GZ.title}</div>
         <div class="clear-time">クリア時間：<strong id="clearTime">${formatTime(GZ.elapsedMs)}</strong></div>
         <div style="display:flex;gap:8px">
           <button data-a="closeOv"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
-                   border-radius:8px;font-size:13px;cursor:pointer;color:var(--text2);font-family:inherit">
+                   border-radius:8px;font-size:16px;cursor:pointer;color:var(--text2);font-family:inherit">
             閉じる
           </button>
           <button data-a="back"
             style="flex:1;padding:10px 0;background:var(--text);border:none;border-radius:8px;
-                   font-size:13px;cursor:pointer;color:var(--bg);font-weight:500;font-family:inherit">
+                   font-size:16px;cursor:pointer;color:var(--bg);font-weight:700;font-family:inherit">
             一覧へ戻る
           </button>
         </div>
@@ -946,17 +946,17 @@ function renderGame() {
     <!-- ヒント確認オーバーレイ -->
     <div class="overlay" id="hintov" style="align-items:center;justify-content:center">
       <div class="modal-card hint-card">
-        <div style="font-size:20px;font-weight:600;margin-bottom:8px">ヒントを使う</div>
+        <div style="font-size:23px;font-weight:700;margin-bottom:8px">ヒントを使う</div>
         <p class="hint-copy">選択中のマスにヒントを入力します。</p>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button data-a="closeHint"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
-                   border-radius:8px;font-size:13px;cursor:pointer;color:var(--text2);font-family:inherit">
+                   border-radius:8px;font-size:16px;cursor:pointer;color:var(--text2);font-family:inherit">
             キャンセル
           </button>
           <button data-a="useHint"
             style="flex:1;padding:10px 0;background:var(--text);border:none;border-radius:8px;
-                   font-size:13px;cursor:pointer;color:var(--bg);font-weight:500;font-family:inherit">
+                   font-size:16px;cursor:pointer;color:var(--bg);font-weight:700;font-family:inherit">
             ヒント実行
           </button>
         </div>
@@ -966,17 +966,17 @@ function renderGame() {
     <!-- エラーチェック確認オーバーレイ -->
     <div class="overlay" id="checkov" style="align-items:center;justify-content:center">
       <div class="modal-card hint-card">
-        <div style="font-size:20px;font-weight:600;margin-bottom:8px">エラーチェック</div>
+        <div style="font-size:23px;font-weight:700;margin-bottom:8px">エラーチェック</div>
         <p class="hint-copy">現在の入力にミスがないか確認します。</p>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button data-a="closeCheck"
             style="flex:1;padding:10px 0;background:var(--bg2);border:0.5px solid var(--border);
-                   border-radius:8px;font-size:13px;cursor:pointer;color:var(--text2);font-family:inherit">
+                   border-radius:8px;font-size:16px;cursor:pointer;color:var(--text2);font-family:inherit">
             キャンセル
           </button>
           <button data-a="runCheck"
             style="flex:1;padding:10px 0;background:var(--text);border:none;border-radius:8px;
-                   font-size:13px;cursor:pointer;color:var(--bg);font-weight:500;font-family:inherit">
+                   font-size:16px;cursor:pointer;color:var(--bg);font-weight:700;font-family:inherit">
             チェック実行
           </button>
         </div>
@@ -986,7 +986,7 @@ function renderGame() {
     <!-- 遊び方オーバーレイ -->
     <div class="overlay" id="howto" style="align-items:center;justify-content:center">
       <div class="modal-card howto-card">
-        <div style="font-size:20px;font-weight:600;margin-bottom:10px">遊び方</div>
+        <div style="font-size:23px;font-weight:700;margin-bottom:10px">遊び方</div>
         <ul class="howto-list">
           <li>空いているマスを選び、下の数字で入力します。</li>
           <li>メモを押すと候補数字を小さく記録できます。</li>
