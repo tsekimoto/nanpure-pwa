@@ -197,6 +197,77 @@ body {
   font-weight: 700;
 }
 
+.level-window {
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  touch-action: pan-y;
+}
+.level-window-head {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.level-nav {
+  aspect-ratio: 1;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: var(--control-surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+.level-nav:disabled {
+  color: var(--text3);
+  opacity: 0.35;
+  cursor: default;
+}
+.level-window-title {
+  text-align: center;
+  min-width: 0;
+}
+.level-window-title strong {
+  display: block;
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1.2;
+}
+.level-window-title small {
+  display: block;
+  color: var(--text2);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.level-window-meter {
+  height: 6px;
+  margin: 0 4px 10px;
+  border-radius: 999px;
+  background: var(--bg3);
+  overflow: hidden;
+}
+.level-window-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ok);
+}
+.level-problems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.level-window .pitm {
+  margin-bottom: 0;
+}
+.pitm-loading {
+  cursor: default;
+  opacity: 0.76;
+}
+
 /* ── Sudoku Board ───────────────────────────────────────────── */
 .sdk-board {
   display: grid;

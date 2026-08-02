@@ -225,9 +225,12 @@ let SCREEN    = 'home';   // 'home' | 'list' | 'daily' | 'game'
 
 // ── 問題一覧タブ ──
 let HOME_DIFF  = 'easy';
+let HOME_VIEW_LEVEL = { easy: null, medium: null, hard: null };
 /** @type {{ puzzle:number[], solution:number[], pg:any|null }[]|null} */
 let HOME_PROBS = { easy: null, medium: null, hard: null };
 let HOME_LOADING = { easy: false, medium: false, hard: false };
+let LIST_SWIPE = null;
+let SUPPRESS_CLICK_UNTIL = 0;
 
 // ── デイリータブ ──
 let CAL_YEAR  = new Date().getFullYear();
@@ -343,6 +346,52 @@ function unlockedProblemCount(diff) {
   return listProgressStats(diff).unlocked;
 }
 
+function clampLevel(level, maxLevel) {
+  return Math.min(Math.max(1, level), Math.max(1, maxLevel));
+}
+
+function currentListLevel(diff, stats = listProgressStats(diff)) {
+  const maxLevel = Math.max(1, stats.level);
+  return clampLevel(HOME_VIEW_LEVEL[diff] || maxLevel, maxLevel);
+}
+
+function showListLevel(diff, level) {
+  const stats = listProgressStats(diff);
+  const maxLevel = Math.max(1, stats.level);
+  const nextLevel = clampLevel(level, maxLevel);
+  HOME_VIEW_LEVEL[diff] = nextLevel === maxLevel ? null : nextLevel;
+  renderProblemList();
+}
+
+function shiftListLevel(delta) {
+  const stats = listProgressStats(HOME_DIFF);
+  showListLevel(HOME_DIFF, currentListLevel(HOME_DIFF, stats) + delta);
+}
+
+function levelRange(level, unlocked) {
+  const start = (level - 1) * LIST_BATCH_SIZE;
+  const end = Math.min(level * LIST_BATCH_SIZE, unlocked);
+  return { start, end, total: Math.max(0, end - start) };
+}
+
+function levelProgressStats(diff, start, end) {
+  let done = 0;
+  let started = 0;
+  for (let i = start; i < end; i++) {
+    const pg = Storage.get(`lpg:${diff}:${i}`);
+    if (!pg) continue;
+    if (pg.done) done++;
+    else started++;
+  }
+  const total = Math.max(0, end - start);
+  return {
+    done,
+    started,
+    total,
+    progressPct: total ? Math.round((done / total) * 100) : 0,
+  };
+}
+
 /* ============================================================
    6. ナビゲーション
    ============================================================ */
@@ -376,19 +425,26 @@ function loadProblems(diff) {
   if (HOME_LOADING[diff]) return;
 
   HOME_LOADING[diff] = true;
-  const targetCount = unlockedProblemCount(diff);
+  const stats = listProgressStats(diff);
+  const targetCount = stats.unlocked;
+  const viewLevel = currentListLevel(diff, stats);
+  const { start, end } = levelRange(viewLevel, targetCount);
+  const priority = Array.from({ length: end - start }, (_, n) => start + n);
+  const rest = Array.from({ length: targetCount }, (_, n) => n);
+  const loadOrder = [...new Set([...priority, ...rest])];
   const arr = Array.isArray(HOME_PROBS[diff]) ? [...HOME_PROBS[diff]] : [];
   HOME_PROBS[diff] = arr;
   if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
 
-  const loadNext = i => {
-    if (i >= targetCount) {
+  const loadNext = orderIndex => {
+    if (orderIndex >= loadOrder.length) {
       HOME_PROBS[diff] = arr;
       HOME_LOADING[diff] = false;
       if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
       return;
     }
 
+    const i = loadOrder[orderIndex];
     let pd = Storage.get(`lp:${diff}:${i}`);
     if (!pd) {
       pd = generatePuzzle(diff);
@@ -399,7 +455,7 @@ function loadProblems(diff) {
     HOME_PROBS[diff] = [...arr];
 
     if (SCREEN === 'list' && HOME_DIFF === diff) renderProblemList();
-    setTimeout(() => loadNext(i + 1), 0);
+    setTimeout(() => loadNext(orderIndex + 1), 0);
   };
 
   setTimeout(() => loadNext(0), 0);
@@ -475,12 +531,66 @@ function problemListItems(probs, diff) {
   }).join('');
 }
 
+function problemListPageItems(probs, diff, start, end) {
+  const rows = [];
+  for (let i = start; i < end; i++) {
+    const p = probs?.[i];
+    if (!p) {
+      rows.push(`
+      <div class="pitm pitm-loading">
+        <div>
+          <div class="problem-title">問題 ${i + 1}</div>
+          <div class="problem-status">準備中...</div>
+        </div>
+        <div class="loading-spinner small" aria-hidden="true"></div>
+      </div>`);
+      continue;
+    }
+
+    const status = progressLabel(p.pg);
+    rows.push(`
+      <div class="pitm ${status.cls}" data-a="playL" data-diff="${diff}" data-i="${i}">
+        <div>
+          <div class="problem-title">問題 ${i + 1}</div>
+          <div class="problem-status">${status.label}</div>
+        </div>
+        <div class="problem-meta">
+          <span class="problem-icon">${status.icon}</span>
+          <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </div>
+      </div>`);
+  }
+  return rows.join('');
+}
+
+function problemLevelWindow(probs, diff, viewLevel, maxLevel, start, end, total) {
+  const lp = levelProgressStats(diff, start, end);
+  return `
+      <div class="level-window" data-level-window="true">
+        <div class="level-window-head">
+          <button class="level-nav" data-a="prevLevel" aria-label="前のレベル" ${viewLevel <= 1 ? 'disabled' : ''}>‹</button>
+          <div class="level-window-title">
+            <strong>Lv.${viewLevel}${viewLevel === maxLevel ? ' 現在' : ''}</strong>
+            <small>問題 ${start + 1}〜${end} / ${lp.done}/${total} クリア</small>
+          </div>
+          <button class="level-nav" data-a="nextLevel" aria-label="次のレベル" ${viewLevel >= maxLevel ? 'disabled' : ''}>›</button>
+        </div>
+        <div class="level-window-meter" aria-hidden="true"><span style="width:${lp.progressPct}%"></span></div>
+        <div class="level-problems">
+          ${problemListPageItems(probs, diff, start, end)}
+        </div>
+      </div>`;
+}
+
 function renderProblemList() {
   const mc    = document.getElementById('mc');
   const diff  = HOME_DIFF;
   const probs = HOME_PROBS[diff];
   const loading = HOME_LOADING[diff];
   const stats = listProgressStats(diff);
+  const maxLevel = Math.max(1, stats.level);
+  const viewLevel = currentListLevel(diff, stats);
+  const { start, end, total } = levelRange(viewLevel, stats.unlocked);
 
   let body = '';
   if (probs === null) {
@@ -506,7 +616,7 @@ function renderProblemList() {
         <div class="loading-spinner small" aria-hidden="true"></div>
         <span>${probs.length} / ${stats.unlocked} 問を読み込みました。残りを生成中...</span>
       </div>` : '';
-    body = progress + problemListItems(probs, diff);
+    body = progress + problemLevelWindow(probs, diff, viewLevel, maxLevel, start, end, total);
   }
 
   mc.innerHTML = `
@@ -526,6 +636,7 @@ function renderProblemList() {
       </div>
       ${body}
     </div>`;
+  mc.scrollTop = 0;
 }
 
 /* ============================================================
@@ -1210,8 +1321,10 @@ function dispatch(action, data) {
     // ホーム・問題一覧
     goHome: () => nav('home'),
     goDaily:() => nav('daily'),
-    openList: () => { HOME_DIFF = data.v; nav('list'); },
-    setHD:  () => { HOME_DIFF = data.v; renderProblemList(); },
+    openList: () => { HOME_DIFF = data.v; HOME_VIEW_LEVEL[HOME_DIFF] = null; nav('list'); },
+    setHD:  () => { HOME_DIFF = data.v; HOME_VIEW_LEVEL[HOME_DIFF] = null; renderProblemList(); },
+    prevLevel: () => shiftListLevel(-1),
+    nextLevel: () => shiftListLevel(1),
     playL:  () => playList(data.diff, +data.i),
     // デイリー
     setDD:  () => { DAILY_DIFF = data.v; renderDaily(); },
@@ -1276,9 +1389,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // クリックイベント委譲 (data-a 属性で判別)
   mc.addEventListener('click', e => {
+    if (Date.now() < SUPPRESS_CLICK_UNTIL) {
+      e.preventDefault();
+      return;
+    }
     const el = e.target.closest('[data-a]');
     if (!el || el.tagName === 'INPUT') return;
     dispatch(el.dataset.a, el.dataset);
+  });
+
+  mc.addEventListener('pointerdown', e => {
+    const area = e.target.closest('[data-level-window]');
+    if (SCREEN !== 'list' || !area) return;
+    LIST_SWIPE = { x: e.clientX, y: e.clientY, id: e.pointerId };
+  });
+
+  mc.addEventListener('pointerup', e => {
+    if (!LIST_SWIPE || LIST_SWIPE.id !== e.pointerId || SCREEN !== 'list') {
+      LIST_SWIPE = null;
+      return;
+    }
+
+    const dx = e.clientX - LIST_SWIPE.x;
+    const dy = e.clientY - LIST_SWIPE.y;
+    LIST_SWIPE = null;
+
+    if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    SUPPRESS_CLICK_UNTIL = Date.now() + 350;
+    shiftListLevel(dx > 0 ? -1 : 1);
+  });
+
+  mc.addEventListener('pointercancel', () => {
+    LIST_SWIPE = null;
   });
 
   // キーボード操作 (デスクトップ向け)
