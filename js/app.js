@@ -999,13 +999,21 @@ function updateStatus() {
   }
 }
 
-/** 数字パッドは常に通常表示にする */
+/** 3x3ブロック9個すべてに入った数字は入力済みとして非活性にする */
 function updatePad() {
   for (let n = 1; n <= 9; n++) {
     const btn = document.getElementById('npad' + n);
     if (!btn) continue;
-    btn.classList.remove('full');
-    btn.disabled = false;
+    const blocks = new Set();
+    GZ.cells.forEach((v, idx) => {
+      if (v !== n) return;
+      const row = Math.floor(idx / 9);
+      const col = idx % 9;
+      blocks.add(Math.floor(row / 3) * 3 + Math.floor(col / 3));
+    });
+    const complete = blocks.size === 9;
+    btn.classList.toggle('complete', complete);
+    btn.disabled = complete;
   }
 }
 
