@@ -764,6 +764,7 @@ function enterGame(pd, pgKey, title, backTo) {
     sel:      null,
     noteMode: false,
     hints:    pg ? (pg.hints ?? HINT_MAX) : HINT_MAX,
+    checkCount: pg ? (pg.checkCount ?? 0) : 0,
     wrong:    new Set(pg ? (pg.wrong || []) : []),
     done:     pg ? (pg.done || false) : false,
     elapsedMs: pg?.elapsedMs || 0,
@@ -802,6 +803,7 @@ function saveGame() {
     cells: GZ.cells,
     notes: GZ.notes,
     hints: GZ.hints,
+    checkCount: GZ.checkCount || 0,
     wrong: [...GZ.wrong],
     done:  GZ.done,
     elapsedMs: GZ.elapsedMs || 0,
@@ -1171,10 +1173,25 @@ function gCheck() {
 function runCheck() {
   hideOverlay('checkov');
   if (!GZ.puzzle || GZ.done) return;
+
+  // 1パズルにつき最初のチェックは無料、2回目以降は広告視聴が必要
+  if ((GZ.checkCount || 0) > 0) {
+    requestRewardedAd().then((granted) => {
+      if (!granted || !GZ.puzzle || GZ.done) return;
+      performCheck();
+    });
+    return;
+  }
+  performCheck();
+}
+
+function performCheck() {
+  GZ.checkCount = (GZ.checkCount || 0) + 1;
   GZ.showErrors = true;
   GZ.lastCheck = GZ.wrong.size > 0 ? `ミス: ${GZ.wrong.size}箇所` : '現在の入力にエラーはありません';
   updateAllCells();
   updateStatus();
+  saveGame();
 }
 
 function gClick(i) {
@@ -1248,11 +1265,45 @@ function gNote() {
   if (lbl) lbl.textContent = GZ.noteMode ? 'メモ中' : 'メモ';
 }
 
+/* ============================================================
+   9.5 ネイティブ広告ブリッジ
+   iOSアプリ側 (WKScriptMessageHandler "nativeAd") にリワード広告の
+   表示を要求する。ネイティブブリッジが無い環境 (通常のブラウザ等) では
+   常に granted=false を返す。
+   ============================================================ */
+
+let __adRequestSeq = 0;
+const __pendingAdRequests = new Map();
+
+window.__nativeAdCallback = function (requestId, granted) {
+  const resolve = __pendingAdRequests.get(requestId);
+  if (!resolve) return;
+  __pendingAdRequests.delete(requestId);
+  resolve(granted);
+};
+
+function requestRewardedAd() {
+  const bridge = window.webkit?.messageHandlers?.nativeAd;
+  if (!bridge) return Promise.resolve(false);
+
+  const requestId = `ad${Date.now()}_${++__adRequestSeq}`;
+  return new Promise((resolve) => {
+    __pendingAdRequests.set(requestId, resolve);
+    bridge.postMessage({ type: 'showRewardedAd', requestId });
+  });
+}
+
 function gHint() {
   closeMenu();
   if (!GZ.puzzle || GZ.done) return;
   if (GZ.hints <= 0) {
-    alert('ヒントの残り回数がありません。');
+    requestRewardedAd().then((granted) => {
+      if (!granted || !GZ.puzzle || GZ.done) return;
+      GZ.hints++;
+      updateStatus();
+      saveGame();
+      gHint();
+    });
     return;
   }
   // 選択中のマスがない・確定済み・初期値マスの場合は、未解決のマスを自動選択する
