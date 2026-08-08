@@ -399,6 +399,7 @@ function levelProgressStats(diff, start, end) {
 function nav(screen) {
   SCREEN    = screen;
   MENU_OPEN = false;
+  notifyNativeScreen(screen);
 
   const app = document.getElementById('app');
   const mc  = document.getElementById('mc');
@@ -776,6 +777,7 @@ function enterGame(pd, pgKey, title, backTo) {
   };
   SCREEN    = 'game';
   MENU_OPEN = false;
+  notifyNativeScreen('game');
 
   const app  = document.getElementById('app');
   const mc   = document.getElementById('mc');
@@ -1291,6 +1293,12 @@ function requestRewardedAd() {
     __pendingAdRequests.set(requestId, resolve);
     bridge.postMessage({ type: 'showRewardedAd', requestId });
   });
+}
+
+// ネイティブ側にどの画面を表示中かを伝える。バナー広告はナンプレのプレイ
+// 画面(game)でのみ表示し、一覧・デイリー・ホームでは表示しない。
+function notifyNativeScreen(screen) {
+  window.webkit?.messageHandlers?.screen?.postMessage({ screen });
 }
 
 function gHint() {
