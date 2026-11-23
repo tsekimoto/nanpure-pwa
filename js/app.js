@@ -256,6 +256,7 @@ let DAILY_DIFF = 'medium';
  * - backTo    : string       戻り先画面 ('home'|'daily')
  */
 let GZ = {};
+let GAME_SESSION = 0;
 
 let MENU_OPEN  = false;
 
@@ -397,6 +398,7 @@ function levelProgressStats(diff, start, end) {
    ============================================================ */
 
 function nav(screen) {
+  if (SCREEN === 'game' && screen !== 'game') GAME_SESSION++;
   SCREEN    = screen;
   MENU_OPEN = false;
   notifyNativeScreen(screen);
@@ -757,6 +759,7 @@ function playDaily(date, diff) {
 
 function enterGame(pd, pgKey, title, backTo) {
   const pg = Storage.get(pgKey);
+  GAME_SESSION++;
   GZ = {
     puzzle:   pd.puzzle,
     solution: pd.solution,
@@ -1178,10 +1181,7 @@ function runCheck() {
 
   // 1パズルにつき最初のチェックは無料、2回目以降は広告視聴が必要
   if ((GZ.checkCount || 0) > 0) {
-    requestRewardedAd().then((granted) => {
-      if (!granted || !GZ.puzzle || GZ.done) return;
-      performCheck();
-    });
+    requestGameReward(performCheck);
     return;
   }
   performCheck();
@@ -1290,9 +1290,34 @@ function requestRewardedAd() {
 
   const requestId = `ad${Date.now()}_${++__adRequestSeq}`;
   return new Promise((resolve) => {
-    __pendingAdRequests.set(requestId, resolve);
-    bridge.postMessage({ type: 'showRewardedAd', requestId });
+    const finish = granted => {
+      clearTimeout(timeout);
+      __pendingAdRequests.delete(requestId);
+      resolve(granted === true);
+    };
+    const timeout = setTimeout(() => finish(false), 120000);
+    __pendingAdRequests.set(requestId, finish);
+    try { bridge.postMessage({ type: 'showRewardedAd', requestId }); }
+    catch { finish(false); }
   });
+}
+
+async function requestGameReward(onGranted) {
+  const game = GZ;
+  const session = GAME_SESSION;
+  if (game.adPending) return;
+  const request = {};
+  game.adPending = request;
+  const granted = await requestRewardedAd();
+  if (game.adPending === request) game.adPending = false;
+  if (GZ !== game || GAME_SESSION !== session || SCREEN !== 'game' || game.done) return;
+  if (granted) onGranted();
+  else {
+    game.lastCheck = window.webkit?.messageHandlers?.nativeAd
+      ? '広告を視聴できませんでした。通信を確認して、後でもう一度お試しください。'
+      : 'このブラウザーでは追加のヒント・チェック用の広告を利用できません。';
+    updateStatus();
+  }
 }
 
 // ネイティブ側にどの画面を表示中かを伝える。バナー広告はナンプレのプレイ
@@ -1305,8 +1330,7 @@ function gHint() {
   closeMenu();
   if (!GZ.puzzle || GZ.done) return;
   if (GZ.hints <= 0) {
-    requestRewardedAd().then((granted) => {
-      if (!granted || !GZ.puzzle || GZ.done) return;
+    requestGameReward(() => {
       GZ.hints++;
       updateStatus();
       saveGame();
@@ -1348,6 +1372,8 @@ function useHint() {
 }
 
 function gReset() {
+  GAME_SESSION++;
+  GZ.adPending = false;
   GZ.cells    = [...GZ.puzzle];
   GZ.notes    = Array(81).fill(null).map(() => []);
   GZ.wrong    = new Set();
